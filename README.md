@@ -1,15 +1,43 @@
-# sv
+# Papyrus
 
 Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
 
-## Developing
+## Разработка (Development)
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+### Запуск с Docker
+
+Самый простой способ запустить приложение в dev режиме:
 
 ```sh
+# Собрать Docker образ
+docker build -t papyrus-dev .
+
+# Запустить контейнер
+docker run -p 5173:5173 -v $(pwd):/app papyrus-dev
+```
+
+Или используя docker-compose (рекомендуется):
+
+```sh
+docker-compose up
+```
+
+Приложение будет доступно по адресу: `http://localhost:5173`
+
+> **Примечание:** Для работы с hot-reload при разработке, убедитесь, что используется volume mount для синхронизации изменений кода.
+
+### Запуск без Docker
+
+Если у вас установлен Node.js и pnpm локально:
+
+```sh
+# Установить зависимости
+pnpm install
+
+# Запустить dev сервер
 pnpm run dev
 
-# or start the server and open the app in a new browser tab
+# или запустить сервер и открыть приложение в браузере
 pnpm run dev -- --open
 ```
 
