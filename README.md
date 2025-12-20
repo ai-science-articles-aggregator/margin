@@ -13,7 +13,7 @@ Everything you need to build a Svelte project, powered by [`sv`](https://github.
 docker build -t papyrus-dev .
 
 # Запустить контейнер
-docker run -p 5173:5173 -v $(pwd):/app papyrus-dev
+docker run -p 3000:3000 -v $(pwd):/app papyrus-dev
 ```
 
 Или используя docker-compose (рекомендуется):
