@@ -1,7 +1,9 @@
-<script>
-	import { fly } from 'svelte/transition';
+<script lang="ts">
+	import ProjectCard from '$lib/widgets/project-card/project-card.svelte';
+	import CreateCard from '$lib/widgets/create-card/create-card.svelte';
 
-	// Данные проектов с адаптированными цветами для светлой/темной темы
+	// TODO: integrate with backend - fetch projects from API
+	// Данные проектов с адаптированными цветами (цвета высчитывать из индекса проекта) для светлой/темной темы
 	let projects = [
 		{
 			id: 1,
@@ -95,7 +97,18 @@
 
 	let searchQuery = '';
 
-	$: filteredProjects = projects;
+	// TODO: integrate with backend - implement search functionality
+	let filteredProjects = $derived(projects);
+
+	function handleCreateProject() {
+		// TODO: integrate with backend - create new project
+		console.log('Create new project');
+	}
+
+	function handleProjectClick(projectId: number) {
+		// TODO: integrate with backend - navigate to project
+		console.log('Open project:', projectId);
+	}
 </script>
 
 <main class="container mx-auto px-6 py-8">
@@ -109,94 +122,10 @@
       auto-rows-fr: заставляет все ячейки грида быть одной высоты (по самой высокой, или по h-full вложенного)
     -->
 	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-fr">
-		<!-- CARD 1: CREATE NEW -->
-		<!-- Фиксированная минимальная высота (h-80 = 320px) гарантирует одинаковый размер -->
-		<button
-			class="group h-80 flex flex-col items-start justify-between p-8 rounded-[2rem] bg-base-100 border border-base-300 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10 transition-all duration-300 text-left cursor-pointer overflow-hidden relative"
-		>
-			<!-- Background Hover Effect -->
-			<div
-				class="absolute inset-0 bg-base-200/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-			></div>
+		<CreateCard onClick={handleCreateProject} />
 
-			<div
-				class="relative z-10 w-14 h-14 rounded-2xl bg-base-content text-base-100 flex items-center justify-center text-3xl shadow-lg group-hover:scale-110 transition-transform duration-300"
-			>
-				<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-					><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"
-					></path></svg
-				>
-			</div>
-
-			<div class="relative z-10 mt-auto w-full">
-				<h3 class="text-xl font-medium text-base-content mb-1">Новое исследование</h3>
-				<p class="text-sm text-base-content/60">Создать с нуля или импорт</p>
-			</div>
-		</button>
-
-		<!-- PROJECT CARDS LOOP -->
-		{#each projects as project, i (project.id)}
-			<div
-				in:fly={{ y: 20, delay: i * 50, duration: 400 }}
-				class="group h-80 flex flex-col rounded-[2rem] bg-base-100 border border-base-300 hover:border-primary/50 hover:shadow-xl hover:shadow-base-content/5 transition-all duration-300 cursor-pointer overflow-hidden"
-			>
-				<!-- HEADER: Высота h-32 (128px), запрет сжатия shrink-0 -->
-				<div
-					class={`h-32 w-full shrink-0 ${project.colorClass} p-6 flex justify-between items-start transition-colors duration-300 relative`}
-				>
-					<div
-						class="text-4xl filter drop-shadow-sm transform group-hover:scale-110 transition-transform duration-300 origin-top-left"
-					>
-						{project.icon}
-					</div>
-
-					<button
-						class="btn btn-circle btn-sm btn-ghost bg-base-100/40 hover:bg-base-100 border-none opacity-0 group-hover:opacity-100 transition-opacity text-base-content backdrop-blur-sm"
-					>
-						<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"
-							><path
-								d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"
-							/></svg
-						>
-					</button>
-				</div>
-
-				<!-- BODY: Изменили отступы на px-6 py-5 (меньше по вертикали) -->
-				<div class="flex-1 px-6 py-5 flex flex-col overflow-hidden relative">
-					<!--
-         Заголовок:
-         min-h-[3.5rem] = резервирует место ровно под 2 строки (2 * 28px line-height).
-         Даже если заголовок в 1 строку, блок займет место как под 2.
-      -->
-					<h3
-						class="text-lg font-bold text-base-content mb-2 leading-7 line-clamp-2 min-h-[3.5rem] group-hover:text-primary transition-colors"
-					>
-						{project.title}
-					</h3>
-
-					<!--
-         Описание:
-         Изменили на line-clamp-2. Теперь текст гарантированно влезет.
-      -->
-					<p class="text-sm text-base-content/70 mb-auto line-clamp-2 leading-relaxed">
-						{project.preview}
-					</p>
-
-					<!-- Футер: mt-4 чтобы отодвинуть от описания -->
-					<div class="flex items-center justify-between mt-4 pt-2 border-t border-base-200">
-						<div class="flex items-center">
-							<span
-								class="badge badge-sm bg-base-200 border-none text-base-content/70 font-medium py-2.5 px-3 rounded-lg"
-							>
-								{project.sources} ист.
-							</span>
-						</div>
-						<span class="text-xs text-base-content/40 font-medium whitespace-nowrap ml-2">
-							{project.updated}
-						</span>
-					</div>
-				</div>
-			</div>
+		{#each filteredProjects as project, i (project.id)}
+			<ProjectCard project={project} index={i} onClick={() => handleProjectClick(project.id)} />
 		{/each}
 	</div>
 
