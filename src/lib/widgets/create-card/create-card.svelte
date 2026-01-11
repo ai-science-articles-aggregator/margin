@@ -23,7 +23,7 @@
 	</div>
 
 	<div class="relative z-10 mt-auto w-full">
-		<h3 class="text-xl font-medium text-base-content mb-1">Новое исследование</h3>
+		<h3 class="text-xl font-medium text-base-content mb-1">Новое новый блокнот</h3>
 		<p class="text-sm text-base-content/60">Создать с нуля или импорт</p>
 	</div>
 </button>

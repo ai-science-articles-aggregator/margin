@@ -16,6 +16,8 @@
 		linkLabel?: string;
 		linkHref?: string;
 		linkText?: string;
+		isLoading?: boolean;
+		error?: string | null;
 		onSubmit?: (data: {
 			username?: string;
 			email: string;
@@ -34,6 +36,8 @@
 		linkLabel,
 		linkHref,
 		linkText,
+		isLoading = false,
+		error = null,
 		onSubmit,
 	}: Props = $props();
 
@@ -165,15 +169,39 @@
 					</FormField>
 				{/if}
 
+				{#if error}
+					<div class="alert alert-error mt-2">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="stroke-current shrink-0 h-6 w-6"
+							fill="none"
+							viewBox="0 0 24 24"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+							/>
+						</svg>
+						<span class="text-sm">{error}</span>
+					</div>
+				{/if}
+
 				<Button
 					type="submit"
 					variant="primary"
 					rounded
 					fullWidth
-					disabled={!isFormValid}
+					disabled={!isFormValid || isLoading}
 					class="bg-black hover:bg-gray-800 border-none h-12 text-white text-lg font-normal normal-case shadow-lg mt-2"
 				>
-					{submitLabel}
+					{#if isLoading}
+						<span class="loading loading-spinner loading-sm"></span>
+						Загрузка...
+					{:else}
+						{submitLabel}
+					{/if}
 				</Button>
 
 				{#if linkText && linkHref}

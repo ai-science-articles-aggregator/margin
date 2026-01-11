@@ -1,6 +1,6 @@
 <script lang="ts">
 	import ProjectCard from '$lib/widgets/project-card/project-card.svelte';
-	import CreateCard from '$lib/widgets/create-card/create-card.svelte';
+	import CreateNotebook from '$lib/features/create-notebook/create-notebook.svelte';
 
 	// TODO: integrate with backend - fetch projects from API
 	// Данные проектов с адаптированными цветами (цвета высчитывать из индекса проекта) для светлой/темной темы
@@ -122,7 +122,7 @@
       auto-rows-fr: заставляет все ячейки грида быть одной высоты (по самой высокой, или по h-full вложенного)
     -->
 	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-fr">
-		<CreateCard onClick={handleCreateProject} />
+		<CreateNotebook />
 
 		{#each filteredProjects as project, i (project.id)}
 			<ProjectCard project={project} index={i} onClick={() => handleProjectClick(project.id)} />
