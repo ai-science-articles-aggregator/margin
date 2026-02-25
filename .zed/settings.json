@@ -1,0 +1,27 @@
+{
+  "lsp": {
+    "typescript": {
+      "settings": {
+        "typescript": {
+          "tsdk": "node_modules/typescript/lib",
+          "enable": true
+        }
+      }
+    },
+    "svelte": {
+      "settings": {
+        "svelte": {
+          "plugin": {
+            "ignoreWarnings": true
+          }
+        }
+      }
+    }
+  },
+  "typescript": {
+    "prefer_ts_version": "workspace"
+  },
+  "diagnostic": {
+    "excluded_linters": ["svelte"]
+  }
+}

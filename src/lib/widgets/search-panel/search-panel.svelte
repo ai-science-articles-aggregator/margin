@@ -40,10 +40,10 @@
 
 		<div class="relative w-full group">
 			<textarea
-				class="textarea textarea-bordered w-full h-32 rounded-2xl bg-base-200 focus:bg-base-100 focus:border-primary transition-all resize-none pr-12 text-base leading-relaxed custom-scrollbar shadow-inner"
+				class="textarea textarea-bordered w-full h-32 rounded-2xl bg-base-200 focus:bg-base-100 focus:border-primary transition-all resize-none pr-12 text-base leading-relaxed custom-scrollbar shadow-inner placeholder:text-base-content/30"
 				placeholder="Опишите тему исследования подробно."
 				bind:value={searchQuery}
-				on:keydown={(e) => {
+				onkeydown={(e) => {
 					if (e.key === 'Enter' && !e.shiftKey) {
 						e.preventDefault();
 						handleSearch();
@@ -53,7 +53,7 @@
 
 			<button
 				class="absolute bottom-3 right-3 btn btn-sm btn-circle btn-primary shadow-lg hover:scale-105 transition-transform"
-				on:click={handleSearch}
+				onclick={handleSearch}
 				disabled={isSearching || !searchQuery.trim()}
 			>
 				{#if isSearching}
@@ -88,7 +88,7 @@
 					class:ring-primary={selectedSources.includes(item.id)}
 					class:bg-blue-50={selectedSources.includes(item.id)}
 					class:dark:bg-blue-900_20={selectedSources.includes(item.id)}
-					on:click={() => {
+					onclick={() => {
 						if (onToggleSource) {
 							onToggleSource(item.id);
 						}

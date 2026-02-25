@@ -72,9 +72,9 @@
 	}
 </script>
 
-<div class="min-h-screen bg-white relative flex flex-col font-sans overflow-hidden">
+<div class="min-h-screen bg-base-100 relative flex flex-col font-sans overflow-hidden">
 	<div
-		class="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-tr from-blue-50 via-purple-50 to-pink-50 rounded-[100%] blur-3xl -z-10 opacity-70"
+		class="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-tr from-primary/10 via-secondary/10 to-accent/10 rounded-[100%] blur-3xl -z-10 opacity-70"
 	></div>
 
 	<header class="w-full p-6 absolute top-0 z-20">
@@ -86,25 +86,25 @@
 	<main class="flex-grow flex items-center justify-center p-4 z-10">
 		<div
 			in:fly={{ y: 20, duration: 600 }}
-			class="w-full max-w-md bg-white/80 backdrop-blur-xl border border-gray-100 rounded-[2.5rem] shadow-2xl p-8 md:p-12 relative overflow-hidden"
+			class="w-full max-w-md bg-base-100/80 backdrop-blur-xl border border-base-300 rounded-[2.5rem] shadow-2xl p-8 md:p-12 relative overflow-hidden"
 		>
 			<div
-				class="absolute top-0 right-0 w-32 h-32 bg-blue-100 rounded-full blur-3xl -z-10 opacity-50 translate-x-10 -translate-y-10"
+				class="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-full blur-3xl -z-10 opacity-50 translate-x-10 -translate-y-10"
 			></div>
 
 			<div class="text-center mb-10">
-				<h1 class="text-3xl font-medium text-gray-900 mb-2 tracking-tight">{title}</h1>
+				<h1 class="text-3xl font-medium text-base-content mb-2 tracking-tight">{title}</h1>
 				{#if subtitle}
-					<p class="text-gray-500 text-sm">{subtitle}</p>
+					<p class="text-base-content/60 text-sm">{subtitle}</p>
 				{/if}
 			</div>
 
-			<form on:submit={handleSubmit} class="flex flex-col gap-5">
+			<form onsubmit={handleSubmit} class="flex flex-col gap-5">
 				{#if showSocialLogin}
 					<button
 						type="button"
-						class="btn btn-outline rounded-full w-full border-gray-200 font-normal hover:bg-gray-50 hover:border-gray-300 normal-case flex gap-2 h-12"
-						on:click={handleSocialLogin}
+						class="btn btn-outline rounded-full w-full border-base-300 font-normal hover:bg-base-200 normal-case flex gap-2 h-12 text-base-content"
+						onclick={handleSocialLogin}
 					>
 						<svg class="w-5 h-5" viewBox="0 0 24 24">
 							<path
@@ -124,7 +124,7 @@
 						Войти через Google
 					</button>
 
-					<div class="divider text-xs text-gray-400 font-light my-0">ИЛИ</div>
+					<div class="divider text-xs text-base-content/40 font-light my-0">ИЛИ</div>
 				{/if}
 
 				{#if showUsername}
@@ -160,7 +160,7 @@
 								class="checkbox checkbox-xs rounded-md"
 								bind:checked={showPassword}
 							/>
-							<span class="label-text text-xs text-gray-500">Показать пароль</span>
+							<span class="label-text text-xs text-base-content/60">Показать пароль</span>
 						</label>
 					</div>
 				{:else}
@@ -194,7 +194,6 @@
 					rounded
 					fullWidth
 					disabled={!isFormValid || isLoading}
-					class="bg-black hover:bg-gray-800 border-none h-12 text-white text-lg font-normal normal-case shadow-lg mt-2"
 				>
 					{#if isLoading}
 						<span class="loading loading-spinner loading-sm"></span>
@@ -205,10 +204,10 @@
 				</Button>
 
 				{#if linkText && linkHref}
-					<p class="text-center text-sm text-gray-500 mt-4">
+					<p class="text-center text-sm text-base-content/60 mt-4">
 						{linkText} <a
 							href={linkHref}
-							class="text-black font-medium hover:underline decoration-blue-400 decoration-2 underline-offset-4"
+							class="text-base-content font-medium hover:underline decoration-primary decoration-2 underline-offset-4"
 							>{linkLabel}</a
 						>
 					</p>

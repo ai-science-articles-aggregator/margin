@@ -23,9 +23,9 @@
 	let inputClasses = $derived(`
 		input input-bordered w-full
 		${rounded ? 'rounded-2xl' : ''}
-		bg-gray-50 border-gray-100
-		focus:bg-white focus:border-blue-400 focus:ring-4 focus:ring-blue-50/50
-		transition-all h-12
+		bg-base-200 border-base-300
+		focus:bg-base-100 focus:border-primary focus:ring-4 focus:ring-primary/20
+		transition-all h-12 text-base-content placeholder:text-base-content/40
 		${className}
 	`.trim().replace(/\s+/g, ' '));
 </script>

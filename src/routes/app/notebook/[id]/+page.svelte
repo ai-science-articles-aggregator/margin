@@ -120,7 +120,7 @@ natural question arises: is there an elegant method to generate contrasting view
 	}
 </script>
 
-<div class="h-[92.5vh] flex flex-col bg-base-200 font-sans overflow-hidden">
+<div class="h-[92.5vh] flex flex-col bg-base-100 font-sans overflow-hidden">
 	<main class="flex-1 flex gap-4 p-4 min-h-0">
 		<div class="w-[400px] flex-none flex flex-col gap-4 min-w-[320px]">
 			<SearchPanel

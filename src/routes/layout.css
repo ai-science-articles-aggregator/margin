@@ -1,7 +1,55 @@
 @import 'tailwindcss';
+@plugin 'daisyui';
 
-@plugin "daisyui";
+@theme {
+  /* Светлая тема */
+  --color-primary: #000000;
+  --color-primary-content: #ffffff;
+  --color-secondary: #6b7280;
+  --color-secondary-content: #ffffff;
+  --color-accent: #3b82f6;
+  --color-accent-content: #ffffff;
+  --color-neutral: #1f2937;
+  --color-neutral-content: #ffffff;
+  --color-base-100: #ffffff;
+  --color-base-200: #f3f4f6;
+  --color-base-300: #e5e7eb;
+  --color-base-content: #1f2937;
+  --color-info: #3abff8;
+  --color-info-content: #000000;
+  --color-success: #37d399;
+  --color-success-content: #000000;
+  --color-warning: #fbbf24;
+  --color-warning-content: #000000;
+  --color-error: #f87272;
+  --color-error-content: #ffffff;
+}
 
+[data-theme="dark"] {
+  /* Тёмная тема - приятные цвета */
+  --color-primary: #38bdf8;
+  --color-primary-content: #000000;
+  --color-secondary: #60a5fa;
+  --color-secondary-content: #000000;
+  --color-accent: #a78bfa;
+  --color-accent-content: #000000;
+  --color-neutral: #374151;
+  --color-neutral-content: #f9fafb;
+  --color-base-100: #1f2937;
+  --color-base-200: #374151;
+  --color-base-300: #4b5563;
+  --color-base-content: #f9fafb;
+  --color-info: #0ea5e9;
+  --color-info-content: #ffffff;
+  --color-success: #10b981;
+  --color-success-content: #ffffff;
+  --color-warning: #f59e0b;
+  --color-warning-content: #000000;
+  --color-error: #ef4444;
+  --color-error-content: #ffffff;
+}
+
+/* Глобальные стили */
 html,
 body {
 	margin: 0;
@@ -10,7 +58,12 @@ body {
 }
 
 .lucide {
-	/* width: 24px;
-    height: 24px; */
 	stroke-width: 2px;
+}
+
+/* Плавный переход между темами для основных элементов */
+html {
+  transition-property: background-color, color;
+  transition-duration: 200ms;
+  transition-timing-function: ease-in-out;
 }

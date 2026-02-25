@@ -60,16 +60,17 @@ export async function login(credentials: LoginRequest): Promise<LoginResponse> {
 
 /**
  * Регистрация нового пользователя
- * @param data - email, password, username (опционально)
- * @returns Данные пользователя
+ * @param data - email, password, username
+ * @returns TokenResponse с access_token и refresh_token (токены устанавливаются в httpOnly cookies)
  */
-export async function register(data: RegisterRequest): Promise<RegisterResponse> {
+export async function register(data: RegisterRequest): Promise<LoginResponse> {
 	try {
-		const response: AxiosResponse<RegisterResponse> = await apiClient.post(
+		const response: AxiosResponse<LoginResponse> = await apiClient.post(
 			'/api/v1/auth/register',
 			data
 		);
 
+		// Токены устанавливаются сервером в httpOnly cookies
 		return response.data;
 	} catch (error) {
 		throw error;
@@ -82,7 +83,22 @@ export async function register(data: RegisterRequest): Promise<RegisterResponse>
 export async function logout(): Promise<void> {
 	try {
 		await apiClient.post('/api/v1/auth/logout');
-		// TODO: integrate with backend - очистка cookie должна происходить на сервере
+		// Токены очищаются сервером (httpOnly cookies)
+	} catch (error) {
+		throw error;
+	}
+}
+
+/**
+ * Обновление токена доступа
+ * @returns Новый access token
+ */
+export async function refreshAccessToken(): Promise<{ access_token: string }> {
+	try {
+		const response: AxiosResponse<{ access_token: string }> = await apiClient.post(
+			'/api/v1/auth/refresh'
+		);
+		return response.data;
 	} catch (error) {
 		throw error;
 	}

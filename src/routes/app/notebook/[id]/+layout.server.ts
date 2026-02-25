@@ -1,8 +1,9 @@
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = async ({ cookies, url, fetch }) => {
+export const load: LayoutServerLoad = async ({ cookies, url, params, fetch }) => {
 	const accessToken = cookies.get('access_token');
+	const notebookId = params.id;
 
 	if (!accessToken) {
 		throw redirect(302, `/auth/login?redirect=${encodeURIComponent(url.pathname)}`);
@@ -34,8 +35,28 @@ export const load: LayoutServerLoad = async ({ cookies, url, fetch }) => {
 		throw redirect(302, `/auth/login?redirect=${encodeURIComponent(url.pathname)}`);
 	}
 
+	// Если это страница notebook, загружаем его данные
+	let notebook = null;
+	if (notebookId) {
+		try {
+			const response = await fetch(`/api/v1/notebooks/${notebookId}`, {
+				method: 'GET',
+				headers: {
+					Authorization: `Bearer ${accessToken}`,
+				},
+			});
+
+			if (response.ok) {
+				notebook = await response.json();
+			}
+		} catch (error) {
+			console.error('Notebook load error:', error);
+		}
+	}
+
 	return {
 		token: accessToken,
-		profile
+		profile,
+		notebook
 	};
 };

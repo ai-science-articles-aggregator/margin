@@ -2,7 +2,7 @@
 	import { fly } from 'svelte/transition';
 
 	interface Project {
-		id: number;
+		id: string;
 		title: string;
 		updated: string;
 		sources: number;
@@ -15,9 +15,11 @@
 		project: Project;
 		index?: number;
 		onClick?: () => void;
+		onEdit?: (e: Event) => void;
+		onDelete?: (e: Event) => void;
 	}
 
-	let { project, index = 0, onClick }: Props = $props();
+	let { project, index = 0, onClick, onEdit, onDelete }: Props = $props();
 </script>
 
 <div
@@ -34,18 +36,39 @@
 			{project.icon}
 		</div>
 
-		<button
-			class="btn btn-circle btn-sm btn-ghost bg-base-100/40 hover:bg-base-100 border-none opacity-0 group-hover:opacity-100 transition-opacity text-base-content backdrop-blur-sm"
-			on:click|stopPropagation={() => {
-				// TODO: integrate with backend - open project menu
-			}}
+		<div
+			class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+			on:click|stopPropagation
 		>
-			<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-				<path
-					d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"
-				/>
-			</svg>
-		</button>
+			<button
+				class="btn btn-circle btn-sm btn-ghost bg-base-100/40 hover:bg-base-100 border-none text-base-content backdrop-blur-sm"
+				title="Редактировать"
+				on:click={(e) => onEdit?.(e)}
+			>
+				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+					/>
+				</svg>
+			</button>
+			<button
+				class="btn btn-circle btn-sm btn-ghost bg-base-100/40 hover:bg-error hover:text-error-content border-none text-base-content backdrop-blur-sm"
+				title="Удалить"
+				on:click={(e) => onDelete?.(e)}
+			>
+				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+					/>
+				</svg>
+			</button>
+		</div>
 	</div>
 
 	<div class="flex-1 px-6 py-5 flex flex-col overflow-hidden relative">

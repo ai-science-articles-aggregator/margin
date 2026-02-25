@@ -26,13 +26,14 @@
 		bind:value
 		{disabled}
 		{required}
-		class="input input-bordered w-full rounded-2xl bg-gray-50 border-gray-100 focus:bg-white focus:border-blue-400 focus:ring-4 focus:ring-blue-50/50 transition-all h-12 pr-10"
+		class="input input-bordered w-full rounded-2xl bg-base-200 border-base-300 focus:bg-base-100 focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all h-12 pr-10 text-base-content placeholder:text-base-content/40"
 		{...restProps}
 	/>
 	<button
 		type="button"
-		class="absolute right-3 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-100 transition"
-		on:click={() => (showPassword = !showPassword)}
+		class="absolute right-3 top-1/2 -translate-y-1/2 text-base-content opacity-40 hover:opacity-100 transition"
+		onclick={() => (showPassword = !showPassword)}
+		aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
 	>
 		{#if showPassword}
 			<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

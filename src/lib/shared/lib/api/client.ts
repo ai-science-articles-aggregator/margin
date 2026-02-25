@@ -20,8 +20,10 @@ apiClient.interceptors.response.use(
 	(response) => response,
 	(error: AxiosError) => {
 		if (error.response?.status === 401) {
-			// TODO: integrate with backend - handle unauthorized
-			// Можно добавить редирект на логин или обновление токена
+			// Перенаправляем на страницу логина если не авторизован
+			// В SvelteKit это можно сделать через goto('/auth/login')
+			// но лучше обрабатывать на уровне layout или компонента
+			console.warn('Unauthorized: redirect to login');
 		}
 		return Promise.reject(error);
 	}
