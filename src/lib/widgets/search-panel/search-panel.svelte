@@ -1,19 +1,18 @@
 <script lang="ts">
 	interface SearchResult {
-		id: number;
+		id: string;
 		title: string;
-		author: string;
-		year: number;
-		snippet: string;
+		authors: string;
+		score: number;
 	}
 
 	interface Props {
 		searchQuery?: string;
 		isSearching?: boolean;
 		searchResults?: SearchResult[];
-		selectedSources?: number[];
+		selectedSources?: string[];
 		onSearch?: (query: string) => void;
-		onToggleSource?: (id: number) => void;
+		onToggleSource?: (id: string) => void;
 	}
 
 	let {
@@ -100,7 +99,7 @@
 								{item.title}
 							</h3>
 							<p class="text-xs text-base-content/60 font-medium">
-								{item.author}, {item.year}
+								{item.authors} · {(item.score * 100).toFixed(0)}% match
 							</p>
 						</div>
 						<div
@@ -123,9 +122,6 @@
 							{/if}
 						</div>
 					</div>
-					<p class="text-xs text-base-content/50 mt-2 line-clamp-2 leading-relaxed">
-						{item.snippet}
-					</p>
 				</div>
 			{/each}
 		{:else if !isSearching}

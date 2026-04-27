@@ -30,7 +30,7 @@
 			multiple
 			accept=".pdf,.docx"
 			class="absolute inset-0 opacity-0 cursor-pointer z-10"
-			on:change={handleFileUpload}
+			onchange={handleFileUpload}
 		/>
 
 		{#if uploadedFiles.length === 0}

@@ -25,7 +25,13 @@
 <div
 	in:fly={{ y: 20, delay: index * 50, duration: 400 }}
 	class="group h-80 flex flex-col rounded-[2rem] bg-base-100 border border-base-300 hover:border-primary/50 hover:shadow-xl hover:shadow-base-content/5 transition-all duration-300 cursor-pointer overflow-hidden"
-	on:click={onClick}
+	onclick={onClick}
+	onkeydown={(e) => {
+		if (e.key === 'Enter' || e.key === ' ') {
+			e.preventDefault();
+			onClick?.();
+		}
+	}}
 	role="button"
 	tabindex="0"
 >
@@ -38,12 +44,13 @@
 
 		<div
 			class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
-			on:click|stopPropagation
+			onclick={(e) => e.stopPropagation()}
+			role="presentation"
 		>
 			<button
 				class="btn btn-circle btn-sm btn-ghost bg-base-100/40 hover:bg-base-100 border-none text-base-content backdrop-blur-sm"
 				title="Редактировать"
-				on:click={(e) => onEdit?.(e)}
+				onclick={(e) => onEdit?.(e)}
 			>
 				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
@@ -57,7 +64,7 @@
 			<button
 				class="btn btn-circle btn-sm btn-ghost bg-base-100/40 hover:bg-error hover:text-error-content border-none text-base-content backdrop-blur-sm"
 				title="Удалить"
-				on:click={(e) => onDelete?.(e)}
+				onclick={(e) => onDelete?.(e)}
 			>
 				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path

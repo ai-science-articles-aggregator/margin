@@ -8,7 +8,7 @@
 
 <button
 	class="group h-80 flex flex-col items-start justify-between p-8 rounded-[2rem] bg-base-100 border border-base-300 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10 transition-all duration-300 text-left cursor-pointer overflow-hidden relative"
-	on:click={onClick}
+	onclick={onClick}
 >
 	<div
 		class="absolute inset-0 bg-base-200/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"

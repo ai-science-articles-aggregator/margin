@@ -211,7 +211,7 @@
 			<h2 class="text-2xl font-medium text-base-content mb-6">Редактировать блокнот</h2>
 
 			<form
-				on:submit={(e) => {
+				onsubmit={(e) => {
 					e.preventDefault();
 					handleUpdateNotebook();
 				}}
@@ -244,7 +244,7 @@
 					<button
 						type="button"
 						class="btn btn-ghost"
-						on:click={() => {
+						onclick={() => {
 							isEditModalOpen = false;
 							selectedNotebook = null;
 						}}
@@ -288,7 +288,7 @@
 				<button
 					type="button"
 					class="btn btn-ghost"
-					on:click={() => {
+					onclick={() => {
 						isDeleteModalOpen = false;
 						selectedNotebook = null;
 					}}
@@ -299,7 +299,7 @@
 				<button
 					type="button"
 					class="btn btn-error"
-					on:click={handleConfirmDelete}
+					onclick={handleConfirmDelete}
 					disabled={isSubmitting}
 				>
 					{#if isSubmitting}

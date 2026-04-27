@@ -44,7 +44,7 @@
 				{:else}
 					<button
 						class="btn btn-lg rounded-full bg-black text-white border-none hover:bg-gray-800 hover:scale-105 transition-transform shadow-xl"
-						on:click={primaryAction.onClick}
+						onclick={primaryAction.onClick}
 					>
 						{primaryAction.label}
 					</button>
@@ -62,7 +62,7 @@
 				{:else}
 					<button
 						class="btn btn-lg btn-outline rounded-full border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300"
-						on:click={secondaryAction.onClick}
+						onclick={secondaryAction.onClick}
 					>
 						{secondaryAction.label}
 					</button>

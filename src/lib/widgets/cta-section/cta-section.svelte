@@ -29,7 +29,7 @@
 		{:else}
 			<button
 				class="btn btn-primary btn-lg rounded-full px-12 bg-black text-white hover:bg-gray-800 border-none h-16 text-lg shadow-2xl hover:-translate-y-1 transition-transform"
-				on:click={onButtonClick}
+				onclick={onButtonClick}
 			>
 				{buttonLabel}
 			</button>

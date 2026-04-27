@@ -18,6 +18,13 @@
 	}: Props = $props();
 
 	let totalSources = $derived(selectedSourcesCount + uploadedFilesCount);
+
+	let renderedHtml = $derived(
+		generatedResult
+			.replace(/\n/g, '<br/>')
+			.replace(/# (.*)/, '<h1>$1</h1>')
+			.replace(/## (.*)/, '<h2>$1</h2>')
+	);
 </script>
 
 <div
@@ -35,16 +42,17 @@
 		</div>
 
 		<div class="flex gap-2">
-			<button class="btn btn-sm btn-ghost rounded-full" on:click={onExport}>
+			<button class="btn btn-sm btn-ghost rounded-full" onclick={onExport}>
 				Экспорт PDF
 			</button>
 			<button
 				class="btn btn-sm btn-primary rounded-full px-6"
-				disabled={totalSources === 0}
-				on:click={onGenerate}
+				disabled={totalSources === 0 || isGenerating}
+				onclick={onGenerate}
 			>
 				{#if isGenerating}
 					<span class="loading loading-dots loading-xs"></span>
+					Генерация...
 				{:else}
 					✨ Сгенерировать
 				{/if}
@@ -53,14 +61,16 @@
 	</div>
 
 	<div class="flex-1 overflow-y-auto p-8 md:p-12 bg-[#ffffff] dark:bg-base-100">
-		{#if generatedResult}
+		{#if generatedResult || isGenerating}
 			<article
 				class="prose prose-lg max-w-4xl mx-auto prose-headings:font-medium prose-p:text-gray-600 prose-a:text-blue-600 dark:prose-invert"
 			>
-				{@html generatedResult
-					.replace(/\n/g, '<br/>')
-					.replace(/# (.*)/, '<h1>$1</h1>')
-					.replace(/## (.*)/, '<h2>$1</h2>')}
+				{#if generatedResult}
+					{@html renderedHtml}
+				{/if}
+				{#if isGenerating}
+					<span class="streaming-cursor" aria-hidden="true">▍</span>
+				{/if}
 			</article>
 		{:else}
 			<div class="h-full flex flex-col items-center justify-center text-center opacity-40">
@@ -88,3 +98,19 @@
 		{/if}
 	</div>
 </div>
+
+<style>
+	.streaming-cursor {
+		display: inline-block;
+		margin-left: 2px;
+		color: oklch(var(--p, 60% 0.2 250));
+		font-weight: bold;
+		animation: blink 1s steps(2, start) infinite;
+		transform: translateY(2px);
+	}
+	@keyframes blink {
+		to {
+			visibility: hidden;
+		}
+	}
+</style>

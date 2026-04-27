@@ -64,7 +64,7 @@
 			<h2 class="text-2xl font-medium text-base-content mb-6">Новый блокнот</h2>
 
 			<form
-				on:submit={(e) => {
+				onsubmit={(e) => {
 					e.preventDefault();
 					handleCreate();
 				}}
@@ -116,7 +116,7 @@
 					<button
 						type="button"
 						class="btn btn-ghost"
-						on:click={handleCloseModal}
+						onclick={handleCloseModal}
 						disabled={isLoading}
 					>
 						Отмена
