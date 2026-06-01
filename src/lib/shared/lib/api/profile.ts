@@ -1,42 +1,57 @@
 import apiClient from './client';
 import type { AxiosResponse } from 'axios';
 
+export interface NotifSettings {
+	digest_weekly: boolean;
+	new_citations: boolean;
+	shared_activity: boolean;
+}
+
 export interface UserProfile {
 	id: string;
-	username: string;
 	email: string;
-	full_name: string | null;
+	first_name: string;
+	last_name: string;
+	department: string | null;
+	notif_settings?: NotifSettings;
 	created_at: string;
 	updated_at: string;
 }
 
-/**
- * Получить данные текущего пользователя
- * @returns Профиль пользователя
- */
-export async function getProfile(): Promise<UserProfile> {
-	try {
-		const response: AxiosResponse<UserProfile> = await apiClient.get('/api/v1/auth/profile');
-		return response.data;
-	} catch (error) {
-		throw error;
-	}
+export interface ProfileUpdatePayload {
+	first_name?: string;
+	last_name?: string;
+	department?: string | null;
+	email?: string;
 }
 
-/**
- * Обновить данные профиля пользователя
- * @param data - Данные для обновления (username, full_name, email)
- * @returns Обновлённый профиль
- */
-export async function updateProfile(data: {
-	username?: string;
-	full_name?: string | null;
-	email?: string;
-}): Promise<UserProfile> {
-	try {
-		const response: AxiosResponse<UserProfile> = await apiClient.patch('/api/v1/auth/profile', data);
-		return response.data;
-	} catch (error) {
-		throw error;
-	}
+export async function updateProfile(data: ProfileUpdatePayload): Promise<UserProfile> {
+	const response: AxiosResponse<UserProfile> = await apiClient.patch(
+		'/api/v1/auth/profile',
+		data
+	);
+	return response.data;
+}
+
+// ─── Display helpers ────────────────────────────────────────────────────────
+
+/** Full name from first + last, falls back to email local part. */
+export function displayName(u: Pick<UserProfile, 'first_name' | 'last_name' | 'email'> | null | undefined): string {
+	if (!u) return '';
+	const name = `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim();
+	if (name) return name;
+	return u.email?.split('@')[0] ?? '';
+}
+
+/** 1–2 letter initials for avatar. */
+export function initialsOf(u: Pick<UserProfile, 'first_name' | 'last_name' | 'email'> | null | undefined): string {
+	if (!u) return '?';
+	const f = (u.first_name ?? '').trim();
+	const l = (u.last_name ?? '').trim();
+	if (f && l) return (f[0] + l[0]).toUpperCase();
+	if (f) return f.slice(0, 2).toUpperCase();
+	if (l) return l.slice(0, 2).toUpperCase();
+	const email = u.email ?? '';
+	const local = email.split('@')[0] ?? '';
+	return local.slice(0, 2).toUpperCase() || '?';
 }

@@ -3,11 +3,29 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="color-scheme" content="light dark" />
+		<title>Margin — Notebooks for researchers</title>
+		<script>
+			(function () {
+				try {
+					var t = localStorage.getItem('papyrus.theme');
+					var l = localStorage.getItem('papyrus.lang');
+					var sysDark =
+						window.matchMedia &&
+						window.matchMedia('(prefers-color-scheme: dark)').matches;
+					var theme = t === 'dark' || t === 'light' ? t : t === 'system' ? (sysDark ? 'dark' : 'light') : sysDark ? 'dark' : 'light';
+					document.documentElement.setAttribute('data-theme', theme);
+					if (l === 'en' || l === 'ru') {
+						document.documentElement.setAttribute('lang', l);
+					} else if ((navigator.language || '').toLowerCase().startsWith('ru')) {
+						document.documentElement.setAttribute('lang', 'ru');
+					}
+				} catch (e) {}
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
-		<div style="display: contents">
-			%sveltekit.body%
-		</div>
+		<div style="display: contents">%sveltekit.body%</div>
 	</body>
 </html>

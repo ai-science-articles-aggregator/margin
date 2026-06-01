@@ -13,93 +13,42 @@ export interface LoginResponse {
 	user?: {
 		id: string;
 		email: string;
-		username?: string;
 	};
 }
 
 export interface RegisterRequest {
 	email: string;
+	first_name: string;
+	last_name: string;
+	department?: string;
 	password: string;
-	username?: string;
 }
 
-export interface RegisterResponse {
-	message?: string;
-	user?: {
-		id: string;
-		email: string;
-		username?: string;
-	};
-}
-
-/**
- * Авторизация пользователя
- * @param credentials - email и password
- * @returns Данные пользователя и токен
- */
 export async function login(credentials: LoginRequest): Promise<LoginResponse> {
-	try {
-		const response: AxiosResponse<LoginResponse> = await apiClient.post(
-			'/api/v1/auth/login',
-			credentials
-		);
-
-		// TODO: integrate with backend - токен должен устанавливаться в httpOnly cookie сервером
-		// Если токен приходит в ответе, можно сохранить его (но лучше через cookie)
-		if (response.data.access_token || response.data.token) {
-			// Токен должен устанавливаться сервером в cookie
-			// Если нужно сохранить на клиенте (не рекомендуется для production):
-			// localStorage.setItem('authToken', response.data.access_token || response.data.token);
-		}
-
-		return response.data;
-	} catch (error) {
-		throw error;
-	}
+	const response: AxiosResponse<LoginResponse> = await apiClient.post(
+		'/api/v1/auth/login',
+		credentials
+	);
+	return response.data;
 }
 
-/**
- * Регистрация нового пользователя
- * @param data - email, password, username
- * @returns TokenResponse с access_token и refresh_token (токены устанавливаются в httpOnly cookies)
- */
 export async function register(data: RegisterRequest): Promise<LoginResponse> {
-	try {
-		const response: AxiosResponse<LoginResponse> = await apiClient.post(
-			'/api/v1/auth/register',
-			data
-		);
-
-		// Токены устанавливаются сервером в httpOnly cookies
-		return response.data;
-	} catch (error) {
-		throw error;
-	}
+	const response: AxiosResponse<LoginResponse> = await apiClient.post(
+		'/api/v1/auth/register',
+		data
+	);
+	return response.data;
 }
 
-/**
- * Выход из системы
- */
 export async function logout(): Promise<void> {
-	try {
-		await apiClient.post('/api/v1/auth/logout');
-		// Токены очищаются сервером (httpOnly cookies)
-	} catch (error) {
-		throw error;
-	}
+	await apiClient.post('/api/v1/auth/logout');
 }
 
 /**
- * Обновление токена доступа
- * @returns Новый access token
+ * Ask backend to mint a new access_token using the refresh_token cookie.
+ * Backend is expected to set a fresh httpOnly access_token cookie on success.
+ * Throws if the refresh token itself is invalid/expired.
  */
-export async function refreshAccessToken(): Promise<{ access_token: string }> {
-	try {
-		const response: AxiosResponse<{ access_token: string }> = await apiClient.post(
-			'/api/v1/auth/refresh'
-		);
-		return response.data;
-	} catch (error) {
-		throw error;
-	}
+export async function refreshAccessToken(): Promise<void> {
+	await apiClient.post('/api/v1/auth/refresh');
 }

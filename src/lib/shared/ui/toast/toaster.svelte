@@ -1,24 +1,39 @@
 <script lang="ts">
 	import { fly } from 'svelte/transition';
-	import { toast } from './toast.svelte';
+	import { toast, type ToastType } from './toast.svelte';
+
+	function color(type: ToastType): string {
+		switch (type) {
+			case 'success':
+				return 'var(--color-accent)';
+			case 'error':
+				return 'var(--color-danger)';
+			case 'warning':
+				return '#b8915a';
+			default:
+				return 'var(--color-muted)';
+		}
+	}
 </script>
 
-<div class="toast toast-end toast-bottom z-[100]">
+<div
+	class="fixed flex flex-col gap-2 z-[100]"
+	style="bottom:24px; right:24px; max-width: 360px;"
+>
 	{#each toast.items as item (item.id)}
 		<div
-			in:fly={{ x: 50, duration: 250 }}
-			out:fly={{ x: 50, duration: 200 }}
-			class="alert shadow-lg max-w-sm flex items-center gap-2"
-			class:alert-success={item.type === 'success'}
-			class:alert-error={item.type === 'error'}
-			class:alert-info={item.type === 'info'}
-			class:alert-warning={item.type === 'warning'}
+			in:fly={{ x: 24, duration: 200 }}
+			out:fly={{ x: 24, duration: 160 }}
+			class="bg-surface border-hair border-line rounded-sm px-3 py-2 flex items-start gap-3"
+			style="box-shadow: var(--shadow-md); border-left: 2px solid {color(item.type)};"
+			role="status"
 		>
-			<span class="flex-1 text-sm">{item.message}</span>
+			<span class="flex-1 text-body-s text-ink leading-snug">{item.message}</span>
 			<button
-				class="btn btn-ghost btn-xs btn-circle"
+				type="button"
+				class="bg-transparent border-0 cursor-pointer text-dim hover:text-ink p-0 leading-none"
 				onclick={() => toast.dismiss(item.id)}
-				aria-label="Закрыть"
+				aria-label="Close"
 			>
 				✕
 			</button>

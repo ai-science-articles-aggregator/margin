@@ -1,17 +1,37 @@
 <script lang="ts">
 	interface Props {
-		href?: string;
-		class?: string;
+		size?: number;
+		href?: string | null;
 	}
 
-	let { href = '/', class: className = '' }: Props = $props();
+	let { size = 18, href = null }: Props = $props();
+	const barH = Math.round(size * 0.95);
 </script>
 
-<a
-	{href}
-	class="text-xl font-medium tracking-tight flex items-center gap-2 text-base-content hover:opacity-80 transition {className}"
-	aria-label="ArticleFusion - Главная страница"
->
-	<div class="w-6 h-6 rounded bg-gradient-to-br from-blue-500 to-purple-600 flex-shrink-0"></div>
-	<span class="hidden md:inline">Article<span class="font-bold">Fusion</span></span>
-</a>
+{#snippet body()}
+	<span
+		class="inline-block bg-accent"
+		style="width:1.5px; height:{barH}px; transform: translateY(2px)"
+		aria-hidden="true"
+	></span>
+	<span
+		class="font-serif text-ink"
+		style="font-size:{size}px; font-weight:500; letter-spacing:-0.01em; line-height:1"
+	>
+		Margin
+	</span>
+{/snippet}
+
+{#if href}
+	<a
+		{href}
+		class="inline-flex items-baseline gap-[6px] no-underline text-ink hover:opacity-90"
+		aria-label="Margin"
+	>
+		{@render body()}
+	</a>
+{:else}
+	<span class="inline-flex items-baseline gap-[6px]" aria-label="Margin">
+		{@render body()}
+	</span>
+{/if}

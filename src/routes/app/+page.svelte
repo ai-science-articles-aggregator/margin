@@ -1,46 +1,68 @@
 <script lang="ts">
-	import ProjectCard from '$lib/widgets/project-card/project-card.svelte';
-	import CreateNotebook from '$lib/features/create-notebook/create-notebook.svelte';
-	import { getNotebooks, deleteNotebook, type NotebookListResponse } from '$lib/shared/lib/api/notebooks';
+	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import {
+		getNotebooks,
+		deleteNotebook,
+		type NotebookListItem
+	} from '$lib/shared/lib/api/notebooks';
+	import { areasStore } from '$lib/shared/lib/stores/areas.svelte';
+	import { i18n } from '$lib/shared/lib/i18n/i18n.svelte';
+	import { toast } from '$lib/shared/ui/toast/toast.svelte';
+	import CreateNotebook from '$lib/features/create-notebook/create-notebook.svelte';
+	import Mono from '$lib/shared/ui/mono/mono.svelte';
+	import AreaDot from '$lib/shared/ui/area-dot/area-dot.svelte';
+	import Rule from '$lib/shared/ui/rule/rule.svelte';
+	import Input from '$lib/shared/ui/input/input.svelte';
+	import Kbd from '$lib/shared/ui/kbd/kbd.svelte';
+	import Button from '$lib/shared/ui/button/button.svelte';
+	import Search from 'lucide-svelte/icons/search';
+	import Pencil from 'lucide-svelte/icons/pencil';
+	import Trash2 from 'lucide-svelte/icons/trash-2';
+	import Users from 'lucide-svelte/icons/users';
+	import Globe from 'lucide-svelte/icons/globe';
 
-	let notebooks = $state<NotebookListResponse[]>([]);
+	let notebooks = $state<NotebookListItem[]>([]);
 	let isLoading = $state(true);
-	let error = $state<string | null>(null);
+	let searchQuery = $state('');
 
-	// Modal states
-	let isEditModalOpen = $state(false);
-	let isDeleteModalOpen = $state(false);
-	let selectedNotebook = $state<NotebookListResponse | null>(null);
-	let editName = $state('');
-	let editDescription = $state('');
+	let editing = $state<NotebookListItem | null>(null);
+	let deleting = $state<NotebookListItem | null>(null);
 	let isSubmitting = $state(false);
 
-	// Цвета для блокнотов (циклически)
-	const colorClasses = [
-		'bg-gradient-to-br from-indigo-100 to-indigo-50 dark:from-indigo-900/40 dark:to-indigo-900/10',
-		'bg-gradient-to-br from-emerald-100 to-emerald-50 dark:from-emerald-900/40 dark:to-emerald-900/10',
-		'bg-gradient-to-br from-cyan-100 to-cyan-50 dark:from-cyan-900/40 dark:to-cyan-900/10',
-		'bg-gradient-to-br from-orange-100 to-orange-50 dark:from-orange-900/40 dark:to-orange-900/10',
-		'bg-gradient-to-br from-rose-100 to-rose-50 dark:from-rose-900/40 dark:to-rose-900/10',
-		'bg-gradient-to-br from-violet-100 to-violet-50 dark:from-violet-900/40 dark:to-violet-900/10',
-		'bg-gradient-to-br from-fuchsia-100 to-fuchsia-50 dark:from-fuchsia-900/40 dark:to-fuchsia-900/10',
-		'bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/40 dark:to-blue-900/10'
-	];
+	let searchInput: HTMLInputElement | null = $state(null);
 
-	const icons = ['📚', '🔬', '💡', '📊', '🎯', '🚀', '⚡', '🌟'];
+	const t = $derived(i18n.t);
+	const profile = $derived($page.data?.profile);
+	const firstName = $derived(profile?.first_name ?? profile?.email?.split('@')[0] ?? '');
 
-	function getNotebookData(notebook: NotebookListResponse, index: number) {
-		const colorIndex = index % colorClasses.length;
-		return {
-			id: notebook.id,
-			title: notebook.name,
-			updated: formatDate(notebook.updated_at),
-			sources: 0,
-			preview: notebook.description || 'Нет описания',
-			colorClass: colorClasses[colorIndex],
-			icon: icons[colorIndex]
-		};
+	// ─── URL-driven filter state ────────────────────────────────────────────────
+	type FilterMode = 'all' | 'shared' | 'public';
+	const filterMode = $derived<FilterMode>(
+		$page.url.searchParams.get('shared_only') === 'true'
+			? 'shared'
+			: $page.url.searchParams.get('visibility') === 'public'
+				? 'public'
+				: 'all'
+	);
+	const areaIdFilter = $derived($page.url.searchParams.get('area_id'));
+	const activeArea = $derived(areaIdFilter ? areasStore.byId(areaIdFilter) : undefined);
+
+	/** Build a query string preserving the current area_id, swapping mode params. */
+	function modeHref(mode: FilterMode): string {
+		const sp = new URLSearchParams();
+		if (mode === 'shared') sp.set('shared_only', 'true');
+		else if (mode === 'public') sp.set('visibility', 'public');
+		if (areaIdFilter) sp.set('area_id', areaIdFilter);
+		const q = sp.toString();
+		return q ? `/app?${q}` : '/app';
+	}
+
+	function clearArea(): string {
+		const sp = new URLSearchParams($page.url.searchParams);
+		sp.delete('area_id');
+		const q = sp.toString();
+		return q ? `/app?${q}` : '/app';
 	}
 
 	function formatDate(dateString: string): string {
@@ -51,264 +73,345 @@
 		const diffHours = Math.floor(diffMins / 60);
 		const diffDays = Math.floor(diffHours / 24);
 
-		if (diffMins < 1) return 'Только что';
-		if (diffMins < 60) return `${diffMins} мин назад`;
-		if (diffHours < 24) return `${diffHours} ч назад`;
-		if (diffDays < 7) return `${diffDays} дн назад`;
-		return date.toLocaleDateString('ru-RU');
+		if (i18n.lang === 'ru') {
+			if (diffMins < 1) return 'только что';
+			if (diffMins < 60) return `${diffMins} мин назад`;
+			if (diffHours < 24) return `${diffHours} ч назад`;
+			if (diffDays < 7) return `${diffDays} дн назад`;
+			return date.toLocaleDateString('ru-RU');
+		}
+		if (diffMins < 1) return 'just now';
+		if (diffMins < 60) return `${diffMins}m ago`;
+		if (diffHours < 24) return `${diffHours}h ago`;
+		if (diffDays < 7) return `${diffDays}d ago`;
+		return date.toLocaleDateString('en-US');
 	}
 
-	async function loadNotebooks() {
+	async function load() {
 		isLoading = true;
-		error = null;
 		try {
 			notebooks = await getNotebooks();
 		} catch (err: any) {
-			error = err.response?.data?.detail || err.message || 'Ошибка загрузки блокнотов';
-			console.error('Load notebooks error:', err);
+			toast.error(err.response?.data?.detail ?? t.toast.loadNotebooksFailed);
 		} finally {
 			isLoading = false;
 		}
 	}
 
-	function handleEditClick(notebook: NotebookListResponse, event: Event) {
-		event.stopPropagation();
-		selectedNotebook = notebook;
-		editName = notebook.name;
-		editDescription = notebook.description || '';
-		isEditModalOpen = true;
+	// Areas come from the shared store (loaded on app shell mount).
+
+	function openEdit(n: NotebookListItem, e: Event) {
+		e.stopPropagation();
+		if (!n.is_owner) return;
+		editing = n;
 	}
 
-	function handleDeleteClick(notebook: NotebookListResponse, event: Event) {
-		event.stopPropagation();
-		selectedNotebook = notebook;
-		isDeleteModalOpen = true;
+	function openDelete(n: NotebookListItem, e: Event) {
+		e.stopPropagation();
+		if (!n.is_owner) return;
+		deleting = n;
 	}
 
-	async function handleUpdateNotebook() {
-		if (!selectedNotebook || !editName.trim()) return;
-
+	async function confirmDelete() {
+		if (!deleting) return;
 		isSubmitting = true;
 		try {
-			const { updateNotebook } = await import('$lib/shared/lib/api/notebooks');
-			await updateNotebook(selectedNotebook.id, {
-				name: editName.trim(),
-				description: editDescription.trim() || undefined,
-			});
-			isEditModalOpen = false;
-			selectedNotebook = null;
-			await loadNotebooks();
+			await deleteNotebook(deleting.id);
+			toast.success(t.toast.notebookDeleted);
+			deleting = null;
+			await load();
 		} catch (err: any) {
-			error = err.response?.data?.detail || err.message || 'Ошибка обновления блокнота';
-			console.error('Update notebook error:', err);
+			toast.error(err.response?.data?.detail ?? t.toast.notebookDeleteFailed);
 		} finally {
 			isSubmitting = false;
 		}
 	}
 
-	async function handleConfirmDelete() {
-		if (!selectedNotebook) return;
-
-		isSubmitting = true;
-		try {
-			await deleteNotebook(selectedNotebook.id);
-			isDeleteModalOpen = false;
-			selectedNotebook = null;
-			await loadNotebooks();
-		} catch (err: any) {
-			error = err.response?.data?.detail || err.message || 'Ошибка удаления блокнота';
-			console.error('Delete notebook error:', err);
-		} finally {
-			isSubmitting = false;
+	function focusSearch(e: KeyboardEvent) {
+		const target = e.target as HTMLElement;
+		const isTyping =
+			target.tagName === 'INPUT' ||
+			target.tagName === 'TEXTAREA' ||
+			target.isContentEditable;
+		if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && !isTyping) {
+			e.preventDefault();
+			searchInput?.focus();
 		}
 	}
 
-	// Загружаем ноутбуки при монтировании
+	function handleEditKey(e: KeyboardEvent) {
+		if (e.key === 'Escape') {
+			editing = null;
+			deleting = null;
+		}
+	}
+
+	let visible = $derived.by(() => {
+		let arr = notebooks;
+		// mode (from URL)
+		if (filterMode === 'shared') arr = arr.filter((n) => !n.is_owner);
+		else if (filterMode === 'public') arr = arr.filter((n) => n.visibility === 'public');
+		// area (from URL)
+		if (areaIdFilter) arr = arr.filter((n) => n.area?.id === areaIdFilter);
+		// search (local)
+		const q = searchQuery.trim().toLowerCase();
+		if (q) {
+			arr = arr.filter(
+				(n) =>
+					n.name.toLowerCase().includes(q) ||
+					(n.description ?? '').toLowerCase().includes(q) ||
+					n.tags.some((tag) => tag.name.toLowerCase().includes(q))
+			);
+		}
+		return arr;
+	});
+
+	function countLabel(n: number, kind: 'sources' | 'notes'): string {
+		const padded = String(n).padStart(2, '0');
+		if (i18n.lang === 'ru') {
+			return kind === 'sources' ? `${padded} ИСТОЧНИКОВ` : `${padded} ЗАМЕТОК`;
+		}
+		return kind === 'sources' ? `${padded} SOURCES` : `${padded} NOTES`;
+	}
+
 	$effect(() => {
-		loadNotebooks();
+		load();
+		areasStore.load();
 	});
 </script>
 
-<main class="container mx-auto px-6 py-8">
-	<div class="mb-8 pl-2">
-		<h1 class="text-3xl font-medium text-base-content">Добро пожаловать</h1>
-		<p class="text-base-content/60">Ваши интеллектуальные пространства</p>
+<svelte:window
+	on:keydown={(e) => {
+		focusSearch(e);
+		handleEditKey(e);
+	}}
+/>
+
+<section style="padding:32px 48px;">
+	<div class="flex items-end justify-between mb-7">
+		<div>
+			<Mono>{i18n.lang === 'ru' ? `БИБЛИОТЕКА · ${notebooks.length} ТЕТРАДЕЙ` : `LIBRARY · ${notebooks.length} NOTEBOOKS`}</Mono>
+			<h1
+				class="font-serif m-0 mt-[6px]"
+				style="font-size:40px; line-height:1.1; letter-spacing:-0.02em; font-weight:400;"
+			>
+				{t.home.greeting}{#if firstName}, {firstName}{/if}<span class="text-accent">.</span>
+			</h1>
+		</div>
+		<div style="width:280px;">
+			<Input
+				bind:value={searchQuery}
+				placeholder={t.home.searchHome}
+				size="sm"
+				bind:ref={searchInput}
+			>
+				{#snippet leading()}
+					<Search class="w-3.5 h-3.5" />
+				{/snippet}
+				{#snippet trailing()}
+					<Kbd>⌘ K</Kbd>
+				{/snippet}
+			</Input>
+		</div>
 	</div>
 
-	{#if error}
-		<div class="alert alert-error mb-6">
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				class="stroke-current shrink-0 h-6 w-6"
-				fill="none"
-				viewBox="0 0 24 24"
+	<div class="flex gap-2 mb-6 items-center flex-wrap">
+		{#each [{ mode: 'all' as FilterMode, label: t.home.filterAll, icon: null }, { mode: 'shared' as FilterMode, label: t.home.sharedWithMe, icon: Users }, { mode: 'public' as FilterMode, label: t.home.filterPublic, icon: Globe }] as opt (opt.mode)}
+			{@const active = filterMode === opt.mode}
+			<a
+				href={modeHref(opt.mode)}
+				class="px-[10px] py-[5px] text-cap rounded-full cursor-pointer transition-colors border-hair font-sans inline-flex items-center gap-[6px] no-underline"
+				style="background: {active
+					? 'var(--color-ink)'
+					: 'transparent'}; color: {active
+					? 'var(--color-paper)'
+					: 'var(--color-muted)'}; border-color: {active
+					? 'var(--color-ink)'
+					: 'var(--color-line)'};"
 			>
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="2"
-					d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-				/>
-			</svg>
-			<span>{error}</span>
-		</div>
-	{/if}
+				{#if opt.icon}
+					{@const Ic = opt.icon}
+					<Ic class="w-3 h-3" />
+				{/if}
+				{opt.label}
+			</a>
+		{/each}
 
-	<!--
-      GRID CONFIGURATION
-      auto-rows-fr: заставляет все ячейки грида быть одной высоты (по самой высокой, или по h-full вложенного)
-    -->
-	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-fr">
-		<CreateNotebook />
+		{#if activeArea}
+			<span class="font-mono text-meta-s text-dim tracking-[0.04em] uppercase ml-2">
+				{t.home.filterAreaPrefix}
+			</span>
+			<a
+				href={clearArea()}
+				class="px-[10px] py-[5px] text-cap rounded-full cursor-pointer transition-colors border-hair font-sans inline-flex items-center gap-[6px] no-underline"
+				style="background: var(--color-surface-2); color: var(--color-ink); border-color: var(--color-line);"
+				title={t.home.filterClear}
+			>
+				<AreaDot paletteKey={activeArea.palette_key} />
+				{activeArea.name}
+				<span class="text-dim ml-1">×</span>
+			</a>
+		{/if}
+		<span class="ml-auto font-mono text-meta-s text-muted tracking-[0.06em]">
+			{t.home.sortRecent}
+		</span>
+	</div>
 
+	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 		{#if isLoading}
-			{#each Array(4) as _, i}
-				<div class="h-80 rounded-[2rem] bg-base-200/50 animate-pulse"></div>
+			{#each Array(6) as _, i (i)}
+				<div
+					class="bg-surface border-hair border-line rounded-md animate-pulse"
+					style="min-height:200px;"
+				></div>
 			{/each}
 		{:else}
-			{#each notebooks as notebook, i (notebook.id)}
-				{@const project = getNotebookData(notebook, i)}
-				<ProjectCard
-					project={project}
-					index={i}
-					onClick={() => goto(`/app/notebook/${notebook.id}`)}
-					onEdit={(e: Event) => handleEditClick(notebook, e)}
-					onDelete={(e: Event) => handleDeleteClick(notebook, e)}
-				/>
+			{#each visible as n, i (n.id)}
+				<div
+					role="link"
+					tabindex="0"
+					onclick={() => goto(`/app/notebook/${n.id}`)}
+					onkeydown={(e) => {
+						if (e.key === 'Enter' || e.key === ' ') {
+							e.preventDefault();
+							goto(`/app/notebook/${n.id}`);
+						}
+					}}
+					class="text-left bg-surface border-hair border-line rounded-md p-5 flex flex-col gap-3 cursor-pointer transition-colors hover:bg-surface-2"
+					style="min-height:200px;"
+				>
+					<div class="flex justify-between items-center">
+						<span class="inline-flex items-center gap-[6px]">
+							{#if n.area}
+								<AreaDot paletteKey={n.area.palette_key} />
+								<Mono>{n.area.name}</Mono>
+							{:else if !n.is_owner}
+								<Mono tone="dim">{i18n.lang === 'ru' ? 'РАСШАРЕННАЯ' : 'SHARED'}</Mono>
+							{:else}
+								<Mono tone="dim">{i18n.lang === 'ru' ? 'БЕЗ ОБЛАСТИ' : 'NO AREA'}</Mono>
+							{/if}
+						</span>
+						<span class="flex items-center gap-2">
+							<span class="font-mono text-meta-s text-dim tracking-[0.04em]">
+								№ {String(i + 1).padStart(2, '0')}
+							</span>
+							{#if n.is_owner}
+								<button
+									type="button"
+									onclick={(e) => openEdit(n, e)}
+									class="bg-transparent border-0 p-1 cursor-pointer text-dim hover:text-ink"
+									aria-label="Edit"
+								>
+									<Pencil class="w-3.5 h-3.5" />
+								</button>
+								<button
+									type="button"
+									onclick={(e) => openDelete(n, e)}
+									class="bg-transparent border-0 p-1 cursor-pointer text-dim hover:text-ink"
+									aria-label="Delete"
+								>
+									<Trash2 class="w-3.5 h-3.5" />
+								</button>
+							{/if}
+						</span>
+					</div>
+					<h3
+						class="font-serif m-0"
+						style="font-size:19px; line-height:1.2; font-weight:400; letter-spacing:-0.01em;"
+					>
+						{n.name}
+					</h3>
+					<p
+						class="text-cap text-muted m-0 flex-1 line-clamp-2"
+						style="line-height:1.55;"
+					>
+						{n.description || '—'}
+					</p>
+					{#if n.tags.length > 0}
+						<div class="flex gap-1 flex-wrap">
+							{#each n.tags.slice(0, 4) as tag (tag.id)}
+								<span
+									class="font-mono text-meta-s text-muted px-[6px] py-[1px] rounded-xs"
+									style="background: var(--color-surface-2); letter-spacing:0.02em;"
+								>
+									<span class="text-accent">#</span>{tag.name}
+								</span>
+							{/each}
+							{#if n.tags.length > 4}
+								<span class="font-mono text-meta-s text-dim">+{n.tags.length - 4}</span>
+							{/if}
+						</div>
+					{/if}
+					<Rule />
+					<div class="flex gap-3 font-mono text-meta-s text-muted tracking-[0.04em] uppercase">
+						<span>{countLabel(n.sources_count, 'sources')}</span>
+						<span>{countLabel(n.notes_count, 'notes')}</span>
+						<span class="ml-auto text-dim">{formatDate(n.updated_at).toUpperCase()}</span>
+					</div>
+					{#if !n.is_owner && n.shared_by}
+						<div class="font-mono text-meta-s text-dim tracking-[0.04em]">
+							{i18n.lang === 'ru' ? 'ДЕЛИЛСЯ' : 'SHARED BY'}
+							<span class="text-muted">{`${n.shared_by.first_name} ${n.shared_by.last_name}`.trim() || n.shared_by.email}</span>
+						</div>
+					{/if}
+				</div>
 			{/each}
 		{/if}
 	</div>
 
-	{#if !isLoading && notebooks.length === 0}
-		<div class="flex flex-col items-center justify-center py-20 opacity-50">
-			<svg
-				class="w-16 h-16 mb-4 text-base-content/30"
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke="currentColor"
-			>
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="1.5"
-					d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-				/>
-			</svg>
-			<p class="text-lg">У вас пока нет блокнотов</p>
-			<p class="text-sm mt-2">Создайте первый блокнот, нажав на кнопку выше</p>
+	{#if !isLoading && visible.length === 0}
+		<div class="text-center py-20">
+			<h2 class="font-serif text-h1 m-0" style="font-weight:400;">{t.home.emptyTitle}</h2>
+			<p class="text-body text-muted mt-2">{t.home.emptySub}</p>
 		</div>
 	{/if}
-</main>
+</section>
 
-<!-- Edit Modal -->
-{#if isEditModalOpen && selectedNotebook}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-		<div
-			role="dialog"
-			aria-modal="true"
-			class="bg-base-100 rounded-2xl p-8 w-full max-w-md shadow-2xl border border-base-300"
-		>
-			<h2 class="text-2xl font-medium text-base-content mb-6">Редактировать блокнот</h2>
-
-			<form
-				onsubmit={(e) => {
-					e.preventDefault();
-					handleUpdateNotebook();
-				}}
-			>
-				<div class="form-control w-full mb-4">
-					<label class="label">
-						<span class="label-text text-base-content">Название *</span>
-					</label>
-					<input
-						type="text"
-						placeholder="Введите название блокнота"
-						bind:value={editName}
-						class="input input-bordered w-full focus:outline-none focus:ring-2 focus:ring-primary"
-						required
-					/>
-				</div>
-
-				<div class="form-control w-full mb-6">
-					<label class="label">
-						<span class="label-text text-base-content">Описание</span>
-					</label>
-					<textarea
-						placeholder="Введите описание (опционально)"
-						bind:value={editDescription}
-						class="textarea textarea-bordered w-full focus:outline-none focus:ring-2 focus:ring-primary min-h-[100px]"
-					></textarea>
-				</div>
-
-				<div class="flex gap-3 justify-end">
-					<button
-						type="button"
-						class="btn btn-ghost"
-						onclick={() => {
-							isEditModalOpen = false;
-							selectedNotebook = null;
-						}}
-						disabled={isSubmitting}
-					>
-						Отмена
-					</button>
-					<button
-						type="submit"
-						class="btn btn-primary"
-						disabled={!editName.trim() || isSubmitting}
-					>
-						{#if isSubmitting}
-							<span class="loading loading-spinner loading-sm"></span>
-							Сохранение...
-						{:else}
-							Сохранить
-						{/if}
-					</button>
-				</div>
-			</form>
-		</div>
-	</div>
+<!-- Edit modal — reuses CreateNotebook in edit mode -->
+{#if editing}
+	<CreateNotebook
+		notebook={editing}
+		onClose={() => (editing = null)}
+		onSaved={() => load()}
+	/>
 {/if}
 
-<!-- Delete Confirmation Modal -->
-{#if isDeleteModalOpen && selectedNotebook}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+<!-- Delete modal -->
+{#if deleting}
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center"
+		style="background: rgba(20,16,10,0.4); backdrop-filter: blur(6px);"
+		role="dialog"
+		aria-modal="true"
+	>
 		<div
-			role="dialog"
-			aria-modal="true"
-			class="bg-base-100 rounded-2xl p-8 w-full max-w-md shadow-2xl border border-base-300"
+			class="bg-surface border-hair border-line rounded-md p-8 w-full max-w-md"
+			style="box-shadow: var(--shadow-lg);"
 		>
-			<h2 class="text-2xl font-medium text-base-content mb-4">Удалить блокнот?</h2>
-			<p class="text-base-content/70 mb-6">
-				Вы уверены, что хотите удалить блокнот <strong class="text-base-content">{selectedNotebook.name}</strong>? Это действие
-				нельзя отменить.
+			<Mono tone="accent">{i18n.lang === 'ru' ? '§ ОПАСНАЯ ЗОНА' : '§ DANGER ZONE'}</Mono>
+			<h2 class="font-serif text-h1 m-0 mt-2 mb-4" style="font-weight:400;">
+				{i18n.lang === 'ru' ? 'Удалить тетрадь?' : 'Delete notebook?'}
+			</h2>
+			<p class="text-body text-muted mb-6 leading-[1.55]">
+				{i18n.lang === 'ru'
+					? 'Вы уверены, что хотите удалить'
+					: 'Are you sure you want to delete'}
+				<span class="text-ink font-medium font-serif italic">«{deleting.name}»</span>?
+				{i18n.lang === 'ru' ? 'Это действие нельзя отменить.' : 'This cannot be undone.'}
 			</p>
-
 			<div class="flex gap-3 justify-end">
-				<button
-					type="button"
-					class="btn btn-ghost"
-					onclick={() => {
-						isDeleteModalOpen = false;
-						selectedNotebook = null;
-					}}
-					disabled={isSubmitting}
-				>
-					Отмена
-				</button>
-				<button
-					type="button"
-					class="btn btn-error"
-					onclick={handleConfirmDelete}
-					disabled={isSubmitting}
-				>
-					{#if isSubmitting}
-						<span class="loading loading-spinner loading-sm"></span>
-						Удаление...
-					{:else}
-						Удалить
-					{/if}
-				</button>
+				<Button variant="ghost" size="md" onclick={() => (deleting = null)} disabled={isSubmitting}>
+					{t.settings.cancel}
+				</Button>
+				<Button variant="danger" size="md" onclick={confirmDelete} disabled={isSubmitting}>
+					{isSubmitting
+						? i18n.lang === 'ru'
+							? 'Удаление…'
+							: 'Deleting…'
+						: i18n.lang === 'ru'
+							? 'Удалить'
+							: 'Delete'}
+				</Button>
 			</div>
 		</div>
 	</div>

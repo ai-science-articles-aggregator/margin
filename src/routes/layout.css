@@ -1,69 +1,178 @@
 @import 'tailwindcss';
-@plugin 'daisyui';
+
+@import '@fontsource-variable/newsreader';
+@import '@fontsource-variable/newsreader/standard-italic.css';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/jetbrains-mono';
 
 @theme {
-  /* Светлая тема */
-  --color-primary: #000000;
-  --color-primary-content: #ffffff;
-  --color-secondary: #6b7280;
-  --color-secondary-content: #ffffff;
-  --color-accent: #3b82f6;
-  --color-accent-content: #ffffff;
-  --color-neutral: #1f2937;
-  --color-neutral-content: #ffffff;
-  --color-base-100: #ffffff;
-  --color-base-200: #f3f4f6;
-  --color-base-300: #e5e7eb;
-  --color-base-content: #1f2937;
-  --color-info: #3abff8;
-  --color-info-content: #000000;
-  --color-success: #37d399;
-  --color-success-content: #000000;
-  --color-warning: #fbbf24;
-  --color-warning-content: #000000;
-  --color-error: #f87272;
-  --color-error-content: #ffffff;
+  /* Margin — Library palette, light */
+  --color-paper: #faf8f2;
+  --color-surface: #ffffff;
+  --color-surface-2: #f4efe3;
+  --color-line: #e5dfd0;
+  --color-ink: #1a1814;
+  --color-muted: #6b6356;
+  --color-dim: #a89f8a;
+  --color-accent: #b7613c;
+  --color-accent-ink: #ffffff;
+  --color-accent-tint: #f0d9cc;
+  --color-tag: #f0e9d6;
+  --color-danger: #a6402a;
+
+  /* Type ramp */
+  --text-d1: 3.5rem;
+  --text-d1--line-height: 1.05;
+  --text-d1--letter-spacing: -0.025em;
+  --text-d2: 2.5rem;
+  --text-d2--line-height: 1.1;
+  --text-d2--letter-spacing: -0.02em;
+  --text-h1: 1.75rem;
+  --text-h1--line-height: 1.15;
+  --text-h1--letter-spacing: -0.015em;
+  --text-h2: 1.375rem;
+  --text-h2--line-height: 1.2;
+  --text-h2--letter-spacing: -0.01em;
+  --text-h3: 1.125rem;
+  --text-h3--line-height: 1.25;
+  --text-h3--letter-spacing: -0.01em;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.55;
+  --text-body-s: 0.8125rem;
+  --text-body-s--line-height: 1.55;
+  --text-cap: 0.75rem;
+  --text-cap--line-height: 1.5;
+  --text-meta: 0.6875rem;
+  --text-meta--line-height: 1.5;
+  --text-meta--letter-spacing: 0.06em;
+  --text-meta-s: 0.625rem;
+  --text-meta-s--line-height: 1.5;
+  --text-meta-s--letter-spacing: 0.08em;
+
+  /* Fonts */
+  --font-serif: 'Newsreader Variable', 'Source Serif 4', Georgia, serif;
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', monospace;
+
+  /* Radii */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(20, 16, 10, 0.04);
+  --shadow-md: 0 4px 12px rgba(20, 16, 10, 0.06);
+  --shadow-lg: 0 24px 60px -20px rgba(20, 16, 10, 0.12);
+  --shadow-xl: 0 30px 100px -30px rgba(20, 16, 10, 0.25);
 }
 
-[data-theme="dark"] {
-  /* Тёмная тема - приятные цвета */
-  --color-primary: #38bdf8;
-  --color-primary-content: #000000;
-  --color-secondary: #60a5fa;
-  --color-secondary-content: #000000;
-  --color-accent: #a78bfa;
-  --color-accent-content: #000000;
-  --color-neutral: #374151;
-  --color-neutral-content: #f9fafb;
-  --color-base-100: #1f2937;
-  --color-base-200: #374151;
-  --color-base-300: #4b5563;
-  --color-base-content: #f9fafb;
-  --color-info: #0ea5e9;
-  --color-info-content: #ffffff;
-  --color-success: #10b981;
-  --color-success-content: #ffffff;
-  --color-warning: #f59e0b;
-  --color-warning-content: #000000;
-  --color-error: #ef4444;
-  --color-error-content: #ffffff;
+[data-theme='dark'] {
+  --color-paper: #1a1714;
+  --color-surface: #221e1a;
+  --color-surface-2: #2a2520;
+  --color-line: #3a332b;
+  --color-ink: #f1ecd9;
+  --color-muted: #a89f8a;
+  --color-dim: #6b6356;
+  --color-accent: #d88b68;
+  --color-accent-ink: #1a1714;
+  --color-accent-tint: #4a2d20;
+  --color-tag: #3a332b;
+  --color-danger: #d88b68;
+
 }
 
-/* Глобальные стили */
 html,
 body {
-	margin: 0;
-	padding: 0;
-	height: 100%;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-.lucide {
-	stroke-width: 2px;
-}
-
-/* Плавный переход между темами для основных элементов */
 html {
   transition-property: background-color, color;
   transition-duration: 200ms;
   transition-timing-function: ease-in-out;
+}
+
+/* Tailwind has no native 0.5px utility */
+.border-hair {
+  border-width: 0.5px;
+}
+.border-t-hair {
+  border-top-width: 0.5px;
+}
+.border-b-hair {
+  border-bottom-width: 0.5px;
+}
+.border-l-hair {
+  border-left-width: 0.5px;
+}
+.border-r-hair {
+  border-right-width: 0.5px;
+}
+
+/* Quiet scrollbars */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-ink) 12%, transparent);
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Mono caption helper */
+.mono-cap {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ─── Knowledge-area palette ─────────────────────────────────────────────────
+   Declared as plain :root vars (NOT in @theme) so Tailwind v4 doesn't
+   tree-shake them — we reference them via inline `var(--color-area-{key})`
+   in <AreaDot>, which Tailwind's compiler can't scan.
+   palette_key values must match backend `app/constants/areas.py`. */
+:root {
+  --color-area-sienna: #b7613c;
+  --color-area-moss:   #5a8a55;
+  --color-area-azure:  #3a5f8a;
+  --color-area-plum:   #7a4a8a;
+  --color-area-ochre:  #b8915a;
+  --color-area-teal:   #3f8a82;
+  --color-area-rose:   #b25767;
+  --color-area-forest: #4a7a4a;
+  --color-area-slate:  #6a7280;
+  --color-area-amber:  #c08a2e;
+
+  /* Legacy aliases for mock-data AREAS const (src/lib/shared/lib/tokens.ts). */
+  --color-area-ml:    var(--color-area-sienna);
+  --color-area-bio:   var(--color-area-moss);
+  --color-area-phys:  var(--color-area-azure);
+  --color-area-neuro: var(--color-area-plum);
+  --color-area-mat:   var(--color-area-ochre);
+}
+
+[data-theme='dark'] {
+  --color-area-sienna: #d88b68;
+  --color-area-moss:   #8db884;
+  --color-area-azure:  #6a8fb8;
+  --color-area-plum:   #a878b8;
+  --color-area-ochre:  #d0b888;
+  --color-area-teal:   #65b0a8;
+  --color-area-rose:   #d68595;
+  --color-area-forest: #78a878;
+  --color-area-slate:  #95a0ad;
+  --color-area-amber:  #e0b25c;
 }

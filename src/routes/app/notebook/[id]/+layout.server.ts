@@ -1,62 +1,27 @@
-import { redirect } from '@sveltejs/kit';
+import { requireAuth } from '$lib/server/auth';
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = async ({ cookies, url, params, fetch }) => {
-	const accessToken = cookies.get('access_token');
+export const load: LayoutServerLoad = async ({ cookies, url, fetch, params }) => {
+	const auth = await requireAuth(fetch, cookies, url.pathname);
+
+	// Fetch notebook details using the (possibly refreshed) access token
 	const notebookId = params.id;
-
-	if (!accessToken) {
-		throw redirect(302, `/auth/login?redirect=${encodeURIComponent(url.pathname)}`);
-	}
-
-	// Получаем данные профиля пользователя
-	let profile = null;
-	try {
-		const response = await fetch('/api/v1/auth/profile', {
-			method: 'GET',
-			headers: {
-				Authorization: `Bearer ${accessToken}`,
-			},
-		});
-
-		if (response.ok) {
-			profile = await response.json();
-		} else {
-			const errorData = await response.json().catch(() => ({}));
-			console.error('Profile API error:', response.status, errorData);
-
-			if (response.status === 401) {
-				cookies.delete('access_token', { path: '/' });
-				throw redirect(302, `/auth/login?redirect=${encodeURIComponent(url.pathname)}`);
-			}
-		}
-	} catch (error) {
-		console.error('Profile load error:', error);
-		throw redirect(302, `/auth/login?redirect=${encodeURIComponent(url.pathname)}`);
-	}
-
-	// Если это страница notebook, загружаем его данные
 	let notebook = null;
-	if (notebookId) {
+	if (notebookId && auth.token) {
 		try {
-			const response = await fetch(`/api/v1/notebooks/${notebookId}`, {
+			const res = await fetch(`/api/v1/notebooks/${notebookId}`, {
 				method: 'GET',
-				headers: {
-					Authorization: `Bearer ${accessToken}`,
-				},
+				headers: { Authorization: `Bearer ${auth.token}` }
 			});
-
-			if (response.ok) {
-				notebook = await response.json();
-			}
-		} catch (error) {
-			console.error('Notebook load error:', error);
+			if (res.ok) notebook = await res.json();
+		} catch (err) {
+			console.warn('[ssr] notebook load error', err);
 		}
 	}
 
 	return {
-		token: accessToken,
-		profile,
+		token: auth.token,
+		profile: auth.profile,
 		notebook
 	};
 };
