@@ -20,7 +20,9 @@ function parseSetCookie(line: string): { name: string; value: string; opts: Cook
 	if (eq < 0) return null;
 	const name = head.slice(0, eq);
 	const value = head.slice(eq + 1);
-	const opts: CookieOpts = { path: '/' };
+	// secure по умолчанию false: SvelteKit cookies.set иначе навешивает Secure
+	// сам (в проде), и поверх HTTP это плодит вторую куку с тем же именем.
+	const opts: CookieOpts = { path: '/', secure: false };
 	for (let i = 1; i < parts.length; i++) {
 		const [rawK, ...rest] = parts[i].split('=');
 		const k = rawK.toLowerCase().trim();
