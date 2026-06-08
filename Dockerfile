@@ -1,23 +1,32 @@
-# Используем официальный образ Node.js
-FROM node:20-alpine
+# ---------- build stage ----------
+FROM node:20-alpine AS build
 
-# Устанавливаем pnpm глобально
 RUN npm install -g pnpm
-
-# Устанавливаем рабочую директорию
 WORKDIR /app
 
-# Копируем файлы конфигурации пакетов
+# Зависимости (lockfile может не содержать adapter-node — поэтому без --frozen)
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --no-frozen-lockfile
 
-# Устанавливаем зависимости
-RUN pnpm install
-
-# Копируем исходный код
+# Исходники и прод-сборка (adapter-node => папка build/)
 COPY . .
+RUN pnpm run build
 
-# Открываем порт для dev сервера (по умолчанию Vite использует 5173)
-EXPOSE 5173
+# ---------- runtime stage ----------
+FROM node:20-alpine AS runtime
 
-# Запускаем dev сервер
-CMD ["pnpm", "run", "dev", "--", "--host"]
+RUN npm install -g pnpm
+WORKDIR /app
+ENV NODE_ENV=production
+
+# Только то, что нужно для запуска
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --no-frozen-lockfile --prod
+
+COPY --from=build /app/build ./build
+
+ENV HOST=0.0.0.0
+ENV PORT=3000
+EXPOSE 3000
+
+CMD ["node", "build"]

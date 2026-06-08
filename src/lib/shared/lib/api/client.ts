@@ -4,9 +4,12 @@ import axios, {
 	type InternalAxiosRequestConfig
 } from 'axios';
 
+// В dev — относительные пути (vite proxy). В проде фронт и API на одном домене
+// за nginx, поэтому тоже относительные пути ('' => запросы идут на тот же origin,
+// nginx роутит /api/ на backend). VITE_API_URL можно задать, если API на другом хосте.
 export const API_URL = import.meta.env.DEV
 	? ''
-	: import.meta.env.VITE_API_URL || 'http://192.168.1.177:8000';
+	: (import.meta.env.VITE_API_URL ?? '');
 
 const apiClient: AxiosInstance = axios.create({
 	baseURL: API_URL,
