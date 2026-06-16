@@ -1,11 +1,14 @@
 import type { HandleFetch } from '@sveltejs/kit';
+import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
 
-// Внутренний адрес backend для server-side вызовов. В проде фронт и бэк в одной
-// docker-сети (см. citadel/docker-compose.yml), бэк наружу не опубликован.
-// На клиенте /api роутит nginx; на сервере nginx не задействован, поэтому
-// относительный /api резолвится самим SvelteKit (роута нет → 404). Ходим напрямую.
-const API_INTERNAL_URL = env.API_INTERNAL_URL || 'http://backend:8000';
+// Внутренний адрес backend для server-side вызовов (SSR). На клиенте /api роутит
+// nginx (прод) или vite-прокси (dev); на сервере их нет — ходим в backend напрямую.
+// Адрес выбирается по окружению автоматически, override через API_INTERNAL_URL:
+//   - dev  (vite dev)       → http://localhost:8000  (backend на хосте)
+//   - прод (сборка, docker) → http://backend:8000    (docker-сеть citadel)
+const API_INTERNAL_URL =
+	env.API_INTERNAL_URL || (dev ? 'http://localhost:8000' : 'http://backend:8000');
 
 /**
  * Серверный event.fetch('/api/...') по умолчанию обрабатывается самим

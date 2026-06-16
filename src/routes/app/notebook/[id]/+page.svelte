@@ -148,7 +148,23 @@
 			for (const s of sources) map.set(s.article_id, s);
 			for (const s of newSources) map.set(s.article_id, s);
 			sources = Array.from(map.values());
-			await hydrateArticles([r.id]);
+			// метаданные берём прямо из результата поиска — без запроса /batch
+			const next = new Map(articlesById);
+			next.set(r.id, {
+				id: r.id,
+				title: r.title ?? null,
+				authors: r.authors ?? null,
+				arxiv_id: null,
+				abstract: null,
+				published: null,
+				categories: null,
+				primary_category: null,
+				doi: null,
+				journal_ref: null,
+				num_pages: null,
+				pdf_url: null
+			});
+			articlesById = next;
 			toast.success(i18n.lang === 'ru' ? 'Добавлено' : 'Added');
 		} catch (err: any) {
 			toast.error(err.response?.data?.detail ?? t.toast.searchFailed);
@@ -307,11 +323,11 @@
 
 <div
 	class="flex-1 grid min-h-0 overflow-hidden bg-paper"
-	style="grid-template-columns: 270px 1fr 280px;"
+	style="grid-template-columns: 270px 1fr 280px; grid-template-rows: minmax(0, 1fr);"
 >
 	<!-- SOURCES -->
 	<aside
-		class="flex flex-col bg-surface border-r-hair border-line overflow-hidden"
+		class="flex flex-col min-h-0 bg-surface border-r-hair border-line overflow-hidden"
 		style="padding:20px 16px;"
 	>
 		<div class="flex justify-between items-baseline mb-3">
@@ -464,7 +480,7 @@
 	</aside>
 
 	<!-- CENTER (tabs) -->
-	<main class="flex flex-col overflow-hidden bg-paper">
+	<main class="flex flex-col min-h-0 overflow-hidden bg-paper">
 		<div
 			class="flex border-b-hair border-line bg-surface"
 			style="padding:0 24px; gap:0;"
@@ -650,7 +666,7 @@
 
 	<!-- NOTES -->
 	<aside
-		class="flex flex-col bg-surface border-l-hair border-line overflow-hidden"
+		class="flex flex-col min-h-0 bg-surface border-l-hair border-line overflow-hidden"
 		style="padding:20px 16px;"
 	>
 		<div class="flex justify-between items-baseline mb-3">

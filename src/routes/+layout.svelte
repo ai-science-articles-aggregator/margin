@@ -19,7 +19,7 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-<div class="min-h-screen flex flex-col bg-paper text-ink font-sans">
+<div class="h-screen overflow-hidden flex flex-col bg-paper text-ink font-sans">
 	{@render children()}
 </div>
 
