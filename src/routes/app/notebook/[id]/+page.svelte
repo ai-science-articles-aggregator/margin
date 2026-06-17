@@ -29,6 +29,7 @@
 	import { getArticlesBatch, type ArticleRead } from '$lib/shared/lib/api/articles';
 	import { MOCK_SUMMARY } from '$lib/shared/lib/mock-data';
 	import Mono from '$lib/shared/ui/mono/mono.svelte';
+	import RichText from '$lib/shared/ui/rich-text/rich-text.svelte';
 	import Input from '$lib/shared/ui/input/input.svelte';
 	import Button from '$lib/shared/ui/button/button.svelte';
 	import Kbd from '$lib/shared/ui/kbd/kbd.svelte';
@@ -529,10 +530,10 @@
 									</Mono>
 								</div>
 								<div
-									class="text-body text-ink leading-[1.65] whitespace-pre-wrap"
+									class="text-body text-ink leading-[1.65]"
 									style="padding-left:28px;"
 								>
-									{m.text}
+									<RichText text={m.text} />
 								</div>
 								{#if m.citations.length > 0}
 									<div
@@ -569,10 +570,10 @@
 							<Mono>{i18n.lang === 'ru' ? 'MARGIN · ОТВЕЧАЕТ…' : 'MARGIN · TYPING…'}</Mono>
 						</div>
 						<div
-							class="text-body text-ink leading-[1.65] whitespace-pre-wrap"
+							class="text-body text-ink leading-[1.65]"
 							style="padding-left:28px;"
 						>
-							{pendingAssistant}
+							<RichText text={pendingAssistant} />
 						</div>
 					</div>
 				{/if}
@@ -626,9 +627,9 @@
 				</h2>
 				{#if summaryOutput}
 					<div
-						class="bg-surface border-hair border-line rounded-md p-5 text-body text-ink whitespace-pre-wrap mb-6 leading-[1.65]"
+						class="bg-surface border-hair border-line rounded-md p-5 text-body text-ink mb-6 leading-[1.65]"
 					>
-						{summaryOutput}
+						<RichText text={summaryOutput} />
 					</div>
 				{:else}
 					<p class="text-cap text-muted mb-6">
