@@ -30,7 +30,6 @@
 	import { MOCK_SUMMARY } from '$lib/shared/lib/mock-data';
 	import Mono from '$lib/shared/ui/mono/mono.svelte';
 	import RichText from '$lib/shared/ui/rich-text/rich-text.svelte';
-	import Input from '$lib/shared/ui/input/input.svelte';
 	import Button from '$lib/shared/ui/button/button.svelte';
 	import Kbd from '$lib/shared/ui/kbd/kbd.svelte';
 	import Checkbox from '$lib/shared/ui/checkbox/checkbox.svelte';
@@ -38,9 +37,10 @@
 	import Sparkles from 'lucide-svelte/icons/sparkles';
 	import Trash2 from 'lucide-svelte/icons/trash-2';
 
-	type Tab = 'chat' | 'summary';
+	// A turn in the unified stream: server chat messages plus ephemeral,
+	// locally-held summary turns. `kind` distinguishes the assistant styling.
+	type StreamTurn = ChatMessage & { kind?: 'chat' | 'summary'; sourceCount?: number };
 
-	let tab = $state<Tab>('chat');
 	let sourceFilter = $state<'all' | 'selected'>('all');
 	let sourceQuery = $state('');
 
@@ -53,14 +53,26 @@
 	let chatInput = $state('');
 	let isSending = $state(false);
 	let pendingAssistant = $state('');
+	// What the live stream is producing right now — drives the pending block's
+	// header/styling (chat answer vs. auto-summary).
+	let pendingKind = $state<'chat' | 'summary' | null>(null);
+	let pendingSourceCount = $state(0);
+	// Transient progress notice from the backend (e.g. "Reading articles…"),
+	// shown only until real answer tokens start arriving.
+	let pendingStatus = $state('');
 
 	let notes = $state<Note[]>([]);
 	let newNoteBody = $state('');
 	let newNoteOpen = $state(false);
 	let savingNote = $state(false);
 
-	let summaryOutput = $state('');
+	// Summaries aren't persisted server-side, so they live here and are merged
+	// into the stream by timestamp — surviving the loadMessages() refresh that
+	// replaces `chat` after every chat answer.
+	let summaryTurns = $state<StreamTurn[]>([]);
 	let isSummarizing = $state(false);
+
+	const busy = $derived(isSending || isSummarizing);
 
 	const t = $derived(i18n.t);
 	const notebookId = $derived($page.params.id ?? '');
@@ -73,6 +85,16 @@
 	let visibleSources = $derived(
 		sourceFilter === 'selected' ? sources.filter((s) => s.selected) : sources
 	);
+
+	// Unified conversation: server chat + local summary turns, chronological.
+	let stream = $derived.by(() => {
+		const items: StreamTurn[] = [
+			...chat.map((m) => ({ ...m, kind: 'chat' as const })),
+			...summaryTurns
+		];
+		items.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+		return items;
+	});
 
 	async function loadSources() {
 		if (!notebookId) return;
@@ -211,10 +233,12 @@
 	async function sendChat(e?: Event) {
 		e?.preventDefault();
 		const q = chatInput.trim();
-		if (!q || !notebookId || isSending) return;
+		if (!q || !notebookId || busy) return;
 		chatInput = '';
 		isSending = true;
 		pendingAssistant = '';
+		pendingStatus = '';
+		pendingKind = 'chat';
 		// optimistic user message
 		const userMsg: ChatMessage = {
 			id: `tmp-${Date.now()}`,
@@ -226,36 +250,88 @@
 		chat = [...chat, userMsg];
 
 		try {
-			await sendMessageStream(notebookId, q, (token) => {
-				pendingAssistant += token;
-			});
+			await sendMessageStream(
+				notebookId,
+				q,
+				(token) => {
+					pendingAssistant += token;
+				},
+				(status) => {
+					pendingStatus = status;
+				}
+			);
 			// stream finished — refetch authoritative history (server-saved ids + citations)
 			await loadMessages();
-			pendingAssistant = '';
 		} catch (err: any) {
 			toast.error(err.response?.data?.detail ?? (i18n.lang === 'ru' ? 'Ошибка отправки' : 'Send failed'));
 		} finally {
 			isSending = false;
+			pendingAssistant = '';
+			pendingStatus = '';
+			pendingKind = null;
 		}
 	}
 
+	/**
+	 * Generate a summary as a full chat turn: a synthetic user prompt followed
+	 * by the streamed AUTO-SUMMARY block. Both are local-only (the backend
+	 * doesn't persist summaries), held in `summaryTurns`.
+	 */
 	async function runSummary() {
-		if (!notebookId || selectedIds.length === 0) return;
+		if (!notebookId || selectedIds.length === 0 || busy) return;
+		const count = selectedIds.length;
+		const askedAt = new Date();
+		// Synthetic user turn so the summary reads like a real conversation step.
+		const userTurn: StreamTurn = {
+			id: `local-sumq-${askedAt.getTime()}`,
+			role: 'user',
+			text: i18n.lang === 'ru' ? 'Сделай саммари по выбранным источникам.' : 'Summarize the selected sources.',
+			citations: [],
+			created_at: askedAt.toISOString()
+		};
+		summaryTurns = [...summaryTurns, userTurn];
+
 		isSummarizing = true;
-		summaryOutput = '';
+		pendingAssistant = '';
+		pendingStatus = '';
+		pendingKind = 'summary';
+		pendingSourceCount = count;
+
 		try {
 			await summarizeStream(
 				notebookId,
 				{ article_ids: selectedIds, query: 'Summarize the selected sources.' },
 				(tok) => {
-					summaryOutput += tok;
+					pendingAssistant += tok;
+				},
+				(status) => {
+					pendingStatus = status;
 				}
 			);
+			// Commit the finished summary as a local assistant turn (1ms after the
+			// question so it always sorts directly below it).
+			summaryTurns = [
+				...summaryTurns,
+				{
+					id: `local-sum-${askedAt.getTime()}`,
+					role: 'assistant',
+					text: pendingAssistant,
+					citations: [],
+					created_at: new Date(askedAt.getTime() + 1).toISOString(),
+					kind: 'summary',
+					sourceCount: count
+				}
+			];
 			toast.success(t.toast.summaryReady);
 		} catch (err) {
+			// Roll back the dangling question turn on failure.
+			summaryTurns = summaryTurns.filter((s) => s.id !== userTurn.id);
 			toast.error(t.toast.summaryFailed);
 		} finally {
 			isSummarizing = false;
+			pendingAssistant = '';
+			pendingStatus = '';
+			pendingKind = null;
 		}
 	}
 
@@ -296,9 +372,6 @@
 		return articlesById.get(s.article_id);
 	}
 
-	function summaryBullets(): string[] {
-		return i18n.lang === 'ru' ? MOCK_SUMMARY.bulletsRu : MOCK_SUMMARY.bullets;
-	}
 	function questions(): string[] {
 		return i18n.lang === 'ru' ? MOCK_SUMMARY.questionsRu : MOCK_SUMMARY.questions;
 	}
@@ -480,166 +553,188 @@
 		</div>
 	</aside>
 
-	<!-- CENTER (tabs) -->
+	<!-- CENTER (unified conversation) -->
 	<main class="flex flex-col min-h-0 overflow-hidden bg-paper">
 		<div
-			class="flex border-b-hair border-line bg-surface"
-			style="padding:0 24px; gap:0;"
+			class="flex items-center justify-between border-b-hair border-line bg-surface"
+			style="padding:13px 24px;"
 		>
-			{#each [{ id: 'chat' as const, l: t.notebook.tabChat, s: `${chat.length}` }, { id: 'summary' as const, l: t.notebook.tabSummary, s: `${summaryBullets().length}` }] as tt (tt.id)}
-				<button
-					type="button"
-					onclick={() => (tab = tt.id)}
-					class="bg-transparent border-0 cursor-pointer flex items-center gap-[6px] font-sans"
-					style="padding:14px 0; margin-right:24px; border-bottom: 1.5px solid {tab === tt.id
-						? 'var(--color-ink)'
-						: 'transparent'}; color: {tab === tt.id ? 'var(--color-ink)' : 'var(--color-muted)'}; font-size:13px; font-weight: {tab === tt.id ? 500 : 400};"
-				>
-					{tt.l}
-					<span class="font-mono text-meta-s text-dim">{tt.s}</span>
-				</button>
-			{/each}
+			<Mono>
+				{i18n.lang === 'ru'
+					? `ДИАЛОГ · ${selectedCount} ИСТОЧНИКОВ`
+					: `CONVERSATION · ${selectedCount} SOURCES`}
+			</Mono>
+			{#if notebook?.title}
+				<span class="font-mono text-meta-s text-dim tracking-[0.06em] uppercase line-clamp-1 max-w-[40%]">
+					{notebook.title}
+				</span>
+			{/if}
 		</div>
 
-		{#if tab === 'chat'}
-			<div class="flex-1 overflow-auto" style="padding:24px 40px;">
-				{#each chat as m (m.id)}
-					<div class="mb-7">
-						{#if m.role === 'user'}
-							<div class="flex justify-end">
-								<div
-									class="bg-surface-2 rounded-xl text-body-s leading-[1.5]"
-									style="max-width:78%; padding:10px 14px;"
-								>
-									{m.text}
-								</div>
+		<div class="flex-1 overflow-auto" style="padding:24px 40px;">
+			{#each stream as m (m.id)}
+				<div class="mb-7">
+					{#if m.role === 'user'}
+						<div class="flex justify-end">
+							<div
+								class="bg-surface-2 rounded-xl text-body-s leading-[1.5]"
+								style="max-width:78%; padding:10px 14px;"
+							>
+								{m.text}
 							</div>
-						{:else}
-							<div>
-								<div class="flex items-center gap-2 mb-2">
-									<div
-										class="flex items-center justify-center font-serif"
-										style="width:20px; height:20px; background: var(--color-ink); color: var(--color-paper); font-size:13px;"
-									>
-										M
-									</div>
-									<Mono>
-										{i18n.lang === 'ru'
-											? `MARGIN · ${m.citations.length} ЦИТАТ`
-											: `MARGIN · ${m.citations.length} CITATIONS`}
-									</Mono>
-								</div>
+						</div>
+					{:else if m.kind === 'summary'}
+						<!-- AUTO-SUMMARY turn — accent-marked assistant block -->
+						<div style="border-left:2px solid var(--color-accent); padding-left:18px;">
+							<div class="flex items-center gap-2 mb-2">
 								<div
-									class="text-body text-ink leading-[1.65]"
+									class="flex items-center justify-center"
+									style="width:20px; height:20px; background: var(--color-accent); color: var(--color-accent-ink);"
+								>
+									<Sparkles class="w-3 h-3" />
+								</div>
+								<span class="font-mono text-meta-s tracking-[0.1em] text-accent uppercase">
+									{i18n.lang === 'ru'
+										? `АВТО-САММАРИ · ${m.sourceCount ?? 0} ИСТОЧНИКОВ`
+										: `AUTO-SUMMARY · ${m.sourceCount ?? 0} SOURCES`}
+								</span>
+							</div>
+							<h2
+								class="font-serif m-0 mb-3"
+								style="font-size:22px; font-weight:400; letter-spacing:-0.015em;"
+							>
+								{t.notebook.literatureSays}
+							</h2>
+							<div class="text-body text-ink leading-[1.65]">
+								<RichText text={m.text} />
+							</div>
+						</div>
+					{:else}
+						<!-- MARGIN chat answer -->
+						<div>
+							<div class="flex items-center gap-2 mb-2">
+								<div
+									class="flex items-center justify-center font-serif"
+									style="width:20px; height:20px; background: var(--color-ink); color: var(--color-paper); font-size:13px;"
+								>
+									M
+								</div>
+								<Mono>
+									{i18n.lang === 'ru'
+										? `MARGIN · ${m.citations.length} ЦИТАТ`
+										: `MARGIN · ${m.citations.length} CITATIONS`}
+								</Mono>
+							</div>
+							<div
+								class="text-body text-ink leading-[1.65]"
+								style="padding-left:28px;"
+							>
+								<RichText text={m.text} />
+							</div>
+							{#if m.citations.length > 0}
+								<div
+									class="mt-3 flex flex-col gap-[6px]"
 									style="padding-left:28px;"
 								>
-									<RichText text={m.text} />
+									{#each m.citations as cite, ci (ci)}
+										<div
+											class="bg-surface border-hair border-line rounded-xs px-3 py-[6px] flex gap-[10px] items-center font-mono text-meta text-muted"
+										>
+											<span class="text-accent" style="font-weight:600;">[{ci + 1}]</span>
+											<span class="text-ink">{cite.label}</span>
+											{#if cite.frag}
+												<span class="text-dim">{cite.frag}</span>
+											{/if}
+										</div>
+									{/each}
 								</div>
-								{#if m.citations.length > 0}
-									<div
-										class="mt-3 flex flex-col gap-[6px]"
-										style="padding-left:28px;"
-									>
-										{#each m.citations as cite, ci (ci)}
-											<div
-												class="bg-surface border-hair border-line rounded-xs px-3 py-[6px] flex gap-[10px] items-center font-mono text-meta text-muted"
-											>
-												<span class="text-accent" style="font-weight:600;">[{ci + 1}]</span>
-												<span class="text-ink">{cite.label}</span>
-												{#if cite.frag}
-													<span class="text-dim">{cite.frag}</span>
-												{/if}
-											</div>
-										{/each}
-									</div>
-								{/if}
-							</div>
-						{/if}
-					</div>
-				{/each}
-
-				{#if pendingAssistant}
-					<div class="mb-7">
-						<div class="flex items-center gap-2 mb-2">
-							<div
-								class="flex items-center justify-center font-serif"
-								style="width:20px; height:20px; background: var(--color-ink); color: var(--color-paper); font-size:13px;"
-							>
-								M
-							</div>
-							<Mono>{i18n.lang === 'ru' ? 'MARGIN · ОТВЕЧАЕТ…' : 'MARGIN · TYPING…'}</Mono>
+							{/if}
 						</div>
+					{/if}
+				</div>
+			{/each}
+
+			{#if pendingKind === 'summary'}
+				<div class="mb-7" style="border-left:2px solid var(--color-accent); padding-left:18px;">
+					<div class="flex items-center gap-2 mb-2">
 						<div
-							class="text-body text-ink leading-[1.65]"
-							style="padding-left:28px;"
+							class="flex items-center justify-center"
+							style="width:20px; height:20px; background: var(--color-accent); color: var(--color-accent-ink);"
 						>
+							<Sparkles class="w-3 h-3" />
+						</div>
+						<span class="font-mono text-meta-s tracking-[0.1em] text-accent uppercase">
+							{i18n.lang === 'ru'
+								? `АВТО-САММАРИ · ${pendingSourceCount} ИСТОЧНИКОВ`
+								: `AUTO-SUMMARY · ${pendingSourceCount} SOURCES`}
+						</span>
+					</div>
+					<h2
+						class="font-serif m-0 mb-3"
+						style="font-size:22px; font-weight:400; letter-spacing:-0.015em;"
+					>
+						{t.notebook.literatureSays}
+					</h2>
+					{#if pendingAssistant}
+						<div class="text-body text-ink leading-[1.65]">
 							<RichText text={pendingAssistant} />
 						</div>
-					</div>
-				{/if}
-
-				{#if chat.length === 0 && !pendingAssistant}
-					<div class="flex flex-col gap-3">
-						<Mono>{t.notebook.tryAsking.toUpperCase()}</Mono>
-						{#each questions() as q, i (i)}
-							<button
-								type="button"
-								onclick={() => pickSuggestion(q)}
-								class="group text-left bg-transparent border-hair border-line rounded-sm px-4 py-3 cursor-pointer hover:bg-surface-2 transition-colors flex items-center gap-3"
-							>
-								<span class="font-mono text-meta text-dim shrink-0">
-									{String(i + 1).padStart(2, '0')}
-								</span>
-								<span
-									class="font-serif italic flex-1"
-									style="font-size:15px; line-height:1.4;"
-								>
-									«{q}»
-								</span>
-								<span class="text-accent group-hover:translate-x-[2px] transition-transform" style="font-size:18px;">→</span>
-							</button>
-						{/each}
-					</div>
-				{/if}
-			</div>
-		{:else if tab === 'summary'}
-			<div class="flex-1 overflow-auto" style="padding:24px 40px;">
-				<div class="flex items-baseline justify-between mb-2">
-					<Mono>
-						{i18n.lang === 'ru'
-							? `АВТО-САММАРИ · ${selectedCount} ИСТОЧНИКОВ`
-							: `AUTO-SUMMARY · ${selectedCount} SELECTED`}
-					</Mono>
-					<Button
-						variant="ghost"
-						size="sm"
-						onclick={runSummary}
-						disabled={isSummarizing || selectedCount === 0}
-					>
-						{isSummarizing ? t.notebook.generating : t.notebook.generate}
-					</Button>
+					{:else}
+						<div class="font-serif italic text-muted" style="font-size:14px;">
+							{pendingStatus || (i18n.lang === 'ru' ? 'Думаю…' : 'Thinking…')}
+						</div>
+					{/if}
 				</div>
-				<h2
-					class="font-serif m-0 mb-5"
-					style="font-size:26px; font-weight:400; letter-spacing:-0.015em;"
-				>
-					{t.notebook.literatureSays}
-				</h2>
-				{#if summaryOutput}
-					<div
-						class="bg-surface border-hair border-line rounded-md p-5 text-body text-ink mb-6 leading-[1.65]"
-					>
-						<RichText text={summaryOutput} />
+			{:else if pendingKind === 'chat'}
+				<div class="mb-7">
+					<div class="flex items-center gap-2 mb-2">
+						<div
+							class="flex items-center justify-center font-serif"
+							style="width:20px; height:20px; background: var(--color-ink); color: var(--color-paper); font-size:13px;"
+						>
+							M
+						</div>
+						<Mono>{i18n.lang === 'ru' ? 'MARGIN · ОТВЕЧАЕТ…' : 'MARGIN · TYPING…'}</Mono>
 					</div>
-				{:else}
-					<p class="text-cap text-muted mb-6">
-						{i18n.lang === 'ru'
-							? 'Выберите источники слева и нажмите «Сгенерировать».'
-							: 'Select sources on the left and press Generate.'}
-					</p>
-				{/if}
-			</div>
-		{/if}
+					<div
+						class="text-body text-ink leading-[1.65]"
+						style="padding-left:28px;"
+					>
+						{#if pendingAssistant}
+							<RichText text={pendingAssistant} />
+						{:else}
+							<span class="font-serif italic text-muted" style="font-size:14px;">
+								{pendingStatus || (i18n.lang === 'ru' ? 'Думаю…' : 'Thinking…')}
+							</span>
+						{/if}
+					</div>
+				</div>
+			{/if}
+
+			{#if stream.length === 0 && !pendingKind}
+				<div class="flex flex-col gap-3">
+					<Mono>{t.notebook.tryAsking.toUpperCase()}</Mono>
+					{#each questions() as q, i (i)}
+						<button
+							type="button"
+							onclick={() => pickSuggestion(q)}
+							class="group text-left bg-transparent border-hair border-line rounded-sm px-4 py-3 cursor-pointer hover:bg-surface-2 transition-colors flex items-center gap-3"
+						>
+							<span class="font-mono text-meta text-dim shrink-0">
+								{String(i + 1).padStart(2, '0')}
+							</span>
+							<span
+								class="font-serif italic flex-1"
+								style="font-size:15px; line-height:1.4;"
+							>
+								«{q}»
+							</span>
+							<span class="text-accent group-hover:translate-x-[2px] transition-transform" style="font-size:18px;">→</span>
+						</button>
+					{/each}
+				</div>
+			{/if}
+		</div>
 
 		<div class="border-t-hair border-line bg-surface" style="padding:12px 24px;">
 			<form
@@ -647,18 +742,35 @@
 				class="flex items-center gap-[10px] bg-paper border-hair border-line rounded-md"
 				style="padding:8px 12px;"
 			>
-				<Sparkles class="w-4 h-4 text-muted" />
+				<Button
+					variant="ghost"
+					size="sm"
+					onclick={runSummary}
+					disabled={busy || selectedCount === 0 || !canWrite}
+					title={i18n.lang === 'ru'
+						? 'Саммари по выбранным источникам'
+						: 'Summarize the selected sources'}
+				>
+					<Sparkles class="w-3 h-3" />
+					<span class="hidden sm:inline">
+						{isSummarizing
+							? t.notebook.generating
+							: i18n.lang === 'ru'
+								? 'Саммари'
+								: 'Summary'}
+					</span>
+				</Button>
 				<input
 					bind:value={chatInput}
 					data-chat-input
-					disabled={isSending || !canWrite}
+					disabled={busy || !canWrite}
 					placeholder={i18n.lang === 'ru'
 						? `Спросите ${selectedCount} выбранных источников…`
 						: `Ask the ${selectedCount} selected sources…`}
 					class="flex-1 bg-transparent border-0 outline-none text-body-s text-ink font-sans placeholder:text-dim"
 				/>
 				<Kbd>⌘ ↵</Kbd>
-				<Button type="submit" variant="primary" size="sm" disabled={isSending || !canWrite}>
+				<Button type="submit" variant="primary" size="sm" disabled={busy || !canWrite}>
 					{isSending ? '…' : t.notebook.askCta}
 				</Button>
 			</form>

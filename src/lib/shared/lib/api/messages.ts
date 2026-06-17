@@ -27,12 +27,15 @@ export async function listMessages(
 
 /**
  * Send a chat message — backend responds with SSE-stream of assistant tokens.
- * `onToken` is called for each `data: { "token": "..." }` line.
+ * `onToken` is called for each `data: { "token": "..." }` line. `onStatus`
+ * (optional) is called for transient `data: { "status": "..." }` lines — these
+ * are progress notices (e.g. "Reading articles…"), not part of the answer.
  */
 export async function sendMessageStream(
 	notebookId: string,
 	text: string,
-	onToken: (token: string) => void
+	onToken: (token: string) => void,
+	onStatus?: (status: string) => void
 ): Promise<void> {
 	const url = `${API_URL}/api/v1/notebooks/${notebookId}/messages`;
 	const init: RequestInit = {
@@ -81,6 +84,7 @@ export async function sendMessageStream(
 			try {
 				const obj = JSON.parse(payload);
 				if (typeof obj.token === 'string') onToken(obj.token);
+				else if (typeof obj.status === 'string') onStatus?.(obj.status);
 			} catch {
 				/* ignore */
 			}

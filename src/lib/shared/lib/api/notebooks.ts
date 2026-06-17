@@ -139,7 +139,8 @@ export async function searchArticles(
 export async function summarizeStream(
 	notebookId: string,
 	request: SummarizeRequest,
-	onToken: (token: string) => void
+	onToken: (token: string) => void,
+	onStatus?: (status: string) => void
 ): Promise<void> {
 	const url = `${API_URL}/api/v1/notebooks/${notebookId}/summarize`;
 
@@ -164,7 +165,7 @@ export async function summarizeStream(
 
 	if (!response.ok || !response.body) throw new Error(`Summarize failed: ${response.status}`);
 
-	await readSse(response.body, onToken);
+	await readSse(response.body, onToken, onStatus);
 }
 
 function redirectToLoginIfNeeded() {
@@ -177,7 +178,8 @@ function redirectToLoginIfNeeded() {
 
 async function readSse(
 	body: ReadableStream<Uint8Array>,
-	onToken: (token: string) => void
+	onToken: (token: string) => void,
+	onStatus?: (status: string) => void
 ): Promise<void> {
 	const reader = body.getReader();
 	const decoder = new TextDecoder();
@@ -196,8 +198,9 @@ async function readSse(
 			const payload = line.slice(6).trim();
 			if (payload === '[DONE]') return;
 			try {
-				const { token } = JSON.parse(payload);
-				if (typeof token === 'string') onToken(token);
+				const obj = JSON.parse(payload);
+				if (typeof obj.token === 'string') onToken(obj.token);
+				else if (typeof obj.status === 'string') onStatus?.(obj.status);
 			} catch {
 				/* ignore non-JSON tokens */
 			}
